@@ -2,13 +2,14 @@
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/ximgproc.hpp>
-// #include <opencv2/objdetect/aruco_detector.hpp>
 #include <opencv2/calib3d.hpp>
+#include "markerDetection.cpp"
 
 int main()
 {
     std::cout << "Hello, World!" << std::endl;
     std::cout << CV_VERSION;
+    detectMarkers();
     return 0;
 }
 

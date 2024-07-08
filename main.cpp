@@ -1,12 +1,13 @@
 #include <iostream>
 
-#include "markerDetection.cpp"
+// #include "markerDetection.cpp"
+#include "poseDetection.cpp"
 
 int main()
 {
     std::cout << "Hello, World!" << std::endl;
-    // std::cout << CV_VERSION;
-    detectMarkers();
+    detectPose();
+
     return 0;
 }
 

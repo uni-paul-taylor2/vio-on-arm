@@ -9,4 +9,11 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(Dev main.cpp)
 
-target_link_libraries(Dev ${OpenCV_LIBS})
+# Download the rerun_sdk
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL
+        https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+
+
+target_link_libraries(Dev ${OpenCV_LIBS} rerun_sdk)

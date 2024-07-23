@@ -1,10 +1,12 @@
 #include <iostream>
 
 // #include "markerDetection.cpp"
-#include "poseDetection.cpp"
+// #include "poseDetection.cpp"
+#include "poseDetectionRerunLogging.cpp"
 
 int main()
 {
+
     std::cout << "Hello, World!" << std::endl;
     detectPose();
 

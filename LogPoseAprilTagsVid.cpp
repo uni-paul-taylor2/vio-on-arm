@@ -1,3 +1,7 @@
+/**
+ * Detect poses of April Tags (36h11) in a video (saved as a dir of pics) and log results via rerun
+ */
+
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>

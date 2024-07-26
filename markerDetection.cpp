@@ -1,3 +1,8 @@
+/**
+* Detect and outline markers in a single image and save result to file using cv::imwrite();
+* Image(s) are of DICT_4x4_50 (an aruco calibration board)
+*/
+
 #include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>

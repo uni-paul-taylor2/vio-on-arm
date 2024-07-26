@@ -1,3 +1,7 @@
+/**
+* Detect pose of markers in single image and log results via rerun
+* The image(s) used are of DICT_4x4_50 (an aruco calibration board)
+*/
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/calib3d.hpp>

@@ -1,6 +1,10 @@
 #include <iostream>
 
-#include "LogPoseAprilTags.cpp"
+#include "LogPoseAprilTagsVid.cpp"
+#include "markerDetection.cpp"
+#include "poseDetection.cpp"
+#include "poseDetectionRerunLogging.cpp"
+
 
 int main()
 {

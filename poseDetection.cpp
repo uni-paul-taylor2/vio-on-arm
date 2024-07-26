@@ -1,6 +1,6 @@
 /**
-* Detect pose of markers in single image and save results to file new image file using cv::write
-* The image(s) used are of DICT_4x4_50 (an aruco calibration board)
+ * Detect pose of markers in single image and save results to file new image file using cv::write
+ * The image(s) used are of DICT_4x4_50 (an aruco calibration board)
 */
 #include <iostream>
 
@@ -9,21 +9,20 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/aruco.hpp>
 
-
-std::string imgPath = "/home/zakareeyah/CLionProjects/Dev/media/OAK_DICT_4x4_50_1080p.jpeg";
-std::string outPath = "/home/zakareeyah/CLionProjects/Dev/media/out_OAK_DICT_4x4_50_1080p_pose.png";
-auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
-
-
-cv::Mat intrinsicsMatrix = (cv::Mat_<float>(3,3) <<
-    3075.7952, 0, 1927.995,
-    0, 3075.7952, 1078.1343,
-    0, 0, 1);
-cv::Mat distCoeffs = (cv::Mat_<float>(1, 14) << 2.0888574, -82.303825, -0.00071347022, 0.0020022474, 315.66144,
-    1.8588818, -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
-
-
 void detectPose () {
+    std::string imgPath = "/home/zakareeyah/CLionProjects/Dev/media/OAK_DICT_4x4_50_1080p.jpeg";
+    std::string outPath = "/home/zakareeyah/CLionProjects/Dev/media/out_OAK_DICT_4x4_50_1080p_pose.png";
+    auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
+
+    cv::Mat intrinsicsMatrix = (cv::Mat_<float>(3,3) <<
+        3075.7952, 0, 1927.995,
+        0, 3075.7952, 1078.1343,
+        0, 0, 1);
+    cv::Mat distCoeffs = (cv::Mat_<float>(1, 14) << 2.0888574, -82.303825, -0.00071347022, 0.0020022474, 315.66144,
+        1.8588818, -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
+
+
+
     cv::Mat image = cv::imread(imgPath, cv::IMREAD_COLOR);
     if(!image.data) {
         std::cout << "Could not find image " + imgPath;

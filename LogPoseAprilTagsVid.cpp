@@ -9,20 +9,18 @@
 #include <opencv2/ximgproc.hpp>
 #include <rerun.hpp>
 
-auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11);
+void detectPoseVid () {
+    auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11);
+
+    cv::Mat intrinsicsMatrix = (cv::Mat_<float>(3,3) <<
+    1025.26513671875, 0.0, 642.6650390625,
+    0.0, 1025.26513671875, 359.37811279296875,
+    0.0, 0.0, 1.0);
+
+    cv::Mat distCoeffs = (cv::Mat_<float>(1, 14) << 2.0888574, -82.303825, -0.00071347022, 0.0020022474, 315.66144,
+        1.8588818, -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
 
 
-cv::Mat intrinsicsMatrix = (cv::Mat_<float>(3,3) <<
-1025.26513671875, 0.0, 642.6650390625,
-0.0, 1025.26513671875, 359.37811279296875,
-0.0, 0.0, 1.0);
-
-cv::Mat distCoeffs = (cv::Mat_<float>(1, 14) << 2.0888574, -82.303825, -0.00071347022, 0.0020022474, 315.66144,
-    1.8588818, -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
-
-
-
-void detectPose () {
 
     const auto rec = rerun::RecordingStream("OpenCV4.6");
     rec.spawn().exit_on_failure();

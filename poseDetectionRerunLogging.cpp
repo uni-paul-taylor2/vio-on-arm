@@ -114,7 +114,7 @@ void detectPoseLog () {
         cv::Mat rotMat, rotMatTrans;
         cv::Rodrigues(rvecs[i], rotMat);
         cv::transpose(rotMat, rotMatTrans);
-        std::array<float, 9> rotVals;
+        std::array<float, 9> rotVals{};
         for (int j = 0; j < 9; ++j) {
             rotVals.at(j) = static_cast<float>(rotMatTrans.at<double>(j));
         }

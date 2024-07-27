@@ -4,13 +4,15 @@
 #include "poseDetection.cpp"
 #include "poseDetectionRerunLogging.cpp"
 #include "LogPoseAprilTagsVid.cpp"
+#include "VSLAM.h"
 
 
-int main()
-{
-
+int main() {
     std::cout << "Hello, World!" << std::endl;
-    detectPose();
 
+    VSLAM s{};
+
+
+    std::cout << "END" << std::endl;
     return 0;
 }

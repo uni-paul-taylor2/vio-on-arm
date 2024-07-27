@@ -7,7 +7,9 @@ set(OpenCV_DIR /home/zakareeyah/opencv/lib/cmake/opencv4)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
-add_executable(Dev main.cpp)
+add_executable(Dev main.cpp
+        VSLAM.cpp
+        VSLAM.h)
 
 # Download the rerun_sdk
 include(FetchContent)

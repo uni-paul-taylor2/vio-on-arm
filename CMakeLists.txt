@@ -21,6 +21,8 @@ add_executable(Dev main.cpp
         VSLAM.cpp
         VSLAM.h)
 
+add_executable(gtsamExample GTSAMVisualISAMExample.cpp )
+
 # Download the rerun_sdk
 include(FetchContent)
 FetchContent_Declare(rerun_sdk URL
@@ -29,3 +31,5 @@ FetchContent_MakeAvailable(rerun_sdk)
 
 
 target_link_libraries(Dev ${OpenCV_LIBS} rerun_sdk ${Boost_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
+
+target_link_libraries(gtsamExample ${Boost_LIBRARIES} metis-gtsam gtsam gtsam_unstable)

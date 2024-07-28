@@ -6,6 +6,7 @@
 #include "LogPoseAprilTagsVid.cpp"
 
 #include "VSLAM.h"
+#include "slamProto.cpp"
 
 
 int main() {

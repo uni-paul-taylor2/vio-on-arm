@@ -15,14 +15,17 @@
 
 #include <vector>
 
+#include "rerun/demo_utils.hpp"
+
 
 float markerLength = 0.15;
 
-void getCorners(const cv::Mat& image, std::vector<int> ids, std::vector<std::vector<cv::Point2f> > corners) {
+void getCorners(const cv::Mat& image, std::vector<int>& ids, std::vector<std::vector<cv::Point2f> >& corners) {
     cv::aruco::detectMarkers(image, cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), corners, ids);
 }
 
 void slam() {
+    std::cout << "initializing variables\n";
     // may have to read in as float (check if OpenCV needs it as floats)
     // consider reading in as vectors instead of Mat
     // https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
@@ -41,8 +44,7 @@ void slam() {
     objPoints.ptr<cv::Vec3f>(0)[3] = cv::Vec3f(markerLength, 0, 0); // bottom left
 
     // Define the camera calibration parameters
-    // [what i initially used that was causing error]
-    gtsam::Cal3DS2::shared_ptr K(new gtsam::Cal3DS2(
+    const boost::shared_ptr<gtsam::Cal3DS2> K(new gtsam::Cal3DS2(
         intrinsicsMatrix.at<double>(0,0),
         intrinsicsMatrix.at<double>(1,2),
         0.0,
@@ -54,24 +56,7 @@ void slam() {
         distCoeffs.at<double>(3)
         )
     );
-    // [however declaring it as Cal3_S2 worked]
-    // gtsam::Cal3_S2::shared_ptr K(new gtsam::Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0));
 
-    // [but when I changed the way I declare it to explicitly match what one of the constructors was looking for it worked]
-    // [seems there is a bug? with this particular version of gtsam where Cal3DS2::shared_ptr resolves to boost::shared_ptr<gtsam::Cal3> instead of boost::shared_ptr<gtsam::Cal3DS2> like it should have]
-    // [the commented out code below seems to work]
-    /*const boost::shared_ptr<gtsam::Cal3DS2> K(new gtsam::Cal3DS2(  // Cal
-            3075.7952,
-            3075.7952,
-            0.0,
-            1927.995,
-            1078.1343,
-            2.0888574,
-            -82.303825,
-            -0.00071347022,
-            0.0020022474
-            )
-    );*/
 
     // Define the camera observation noise model (will leave the same for now).
     // TODO: Also try with gaussian noise.
@@ -86,10 +71,13 @@ void slam() {
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initialEstimate;
 
+    std::cout << "Starting loop...\n";
+
     // Loop over the different poses, adding the observations to iSAM incrementally
     // In our case - these are images from the camera
     constexpr int numImages = 171;
-    for (size_t i = 0; i < numImages; ++i) { // looping through frames
+    for (size_t i = 0; i <= numImages; ++i) { // looping through frames
+        std::cout << "frame " << i << std::endl;
         gtsam::Values currentEstimate = isam.estimate();
 
         // get (u,v) of tags in frame
@@ -97,8 +85,11 @@ void slam() {
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f> > corners;
         getCorners(cv::imread(imgPath, cv::IMREAD_COLOR), ids, corners);
+        std::cout << "Got corners\n";
+        std::cout << "IDS has: " << ids.size() << "\n";
         // only using top left corner for now (point 0) of each tag; using all corners may be better
         if (!ids.empty()) {
+            std::cout << ids.size() << " ";
             // if only one tag verify it's world ?
             // Add factors for each landmark observation
             // In our case - these are the apriltags - note - not all tags are visible in all frames.
@@ -123,7 +114,8 @@ void slam() {
             // and a prior on the first landmark to set the scale (and denote the first landmark as world)
             // Also, as iSAM solves incrementally, we must wait until each is observed at least twice ? before
             // adding it to iSAM.
-            if (i == 0) {
+            std::cout << currentEstimate.size();
+            if (currentEstimate.empty()) {
                 int worldTagID = ids[0]; // let the first tag detected be world
                 // get cTw
                 cv::Vec3d rvec, tvec;
@@ -132,9 +124,12 @@ void slam() {
                 cv::Rodrigues(rvec, rot);
 
                 gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
-
-
-
+                std::cout << std::endl;
+                std::cout << rvec << std::endl;
+                std::cout << tvec << std::endl;
+                std::cout << rot << std::endl;
+                std::cout << cTw << std::endl;
+                return;
                 /*// Add a prior on pose x0, with 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
                 auto poseNoise = noiseModel::Diagonal::Sigmas(
                     (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3)).finished());

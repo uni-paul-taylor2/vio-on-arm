@@ -76,20 +76,45 @@ void slam() {
     // Loop over the different poses, adding the observations to iSAM incrementally
     // In our case - these are images from the camera
     constexpr int numImages = 171;
+    int worldTagID;
+    // array/map ? of (seen) tag poses wrt wrld
     for (size_t i = 0; i <= numImages; ++i) { // looping through frames
-        std::cout << "frame " << i << std::endl;
-        gtsam::Values currentEstimate = isam.estimate();
-
         // get (u,v) of tags in frame
         auto imgPath = std::string("/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image") + std::to_string(i) + std::string(".png");
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f> > corners;
         getCorners(cv::imread(imgPath, cv::IMREAD_COLOR), ids, corners);
-        std::cout << "Got corners\n";
-        std::cout << "IDS has: " << ids.size() << "\n";
+
+
+        gtsam::Values currentEstimate = isam.estimate();
+
         // only using top left corner for now (point 0) of each tag; using all corners may be better
         if (!ids.empty()) {
-            std::cout << ids.size() << " ";
+            // If this is the first iteration, add a prior on the first pose to set the coordinate frame
+            // and a prior on the first landmark to set the scale (and denote the first landmark as world)
+            // Also, as iSAM solves incrementally, we must wait until each is observed at least twice ? before
+            // adding it to iSAM.
+            if (currentEstimate.empty()) { // first tag seen
+                worldTagID = ids[0]; // let the first tag detected be world
+                // get cTw - pose of world wrt camera
+                cv::Vec3d rvec, tvec;
+                cv::solvePnP(objPoints, corners[0], intrinsicsMatrix, distCoeffs, rvec, tvec);
+                gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
+                auto wTc = cTw.inverse(); // pose of camaer wrt world
+
+
+                // Add a prior on pose x0, with 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
+                auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(
+                    (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.3)).finished());
+                graph.addPrior(gtsam::Symbol('x', 0), wTc, poseNoise);
+
+                // Add a prior on landmark l0
+                auto pointNoise =
+                    gtsam::noiseModel::Isotropic::Sigma(3, 0.1);
+                graph.addPrior(gtsam::Symbol('l', 0), gtsam::Point3(0,0,0), pointNoise);
+                ids.erase(ids.begin()); // remove world since we already added it
+            }
+
             // if only one tag verify it's world ?
             // Add factors for each landmark observation
             // In our case - these are the apriltags - note - not all tags are visible in all frames.
@@ -102,58 +127,24 @@ void slam() {
                 // Add measurement
                 graph.emplace_shared<gtsam::GenericProjectionFactor<gtsam::Pose3, gtsam::Point3, gtsam::Cal3DS2> >  (measurement, noise,
                                                                                                                    gtsam::Symbol('x', i), gtsam::Symbol('l', j), K);
+            }
+
+            // Add initial guesses to all newly observed landmarks
+            for (size_t j = 0; j < ids.size(); ++j) {
+                // Intentionally initialize the variables off from the ground truth
+                Point3 initial_lj = points[j] + noise;
                 // TODO: If apriltag has not been seen yet, then add it to the initial estimate and initialize using solvePnP
                 if (!currentEstimate.exists(gtsam::Symbol('l', ids[j]))) {    //gtsam::Symbol(ids[i], [corner])
-                    // get cam pose wrt world; get pts wrt world; add to graph (deal with x2 sighting later
+
+                    // get cam pose wrt world; get pts wrt world; add to graph (deal with x2 sighting later)
+                    initialEstimate.insert(Symbol('l', j), initial_lj);
+
                 }
-
             }
-
-
-            // If this is the first iteration, add a prior on the first pose to set the coordinate frame
-            // and a prior on the first landmark to set the scale (and denote the first landmark as world)
-            // Also, as iSAM solves incrementally, we must wait until each is observed at least twice ? before
-            // adding it to iSAM.
-            std::cout << currentEstimate.size();
-            if (currentEstimate.empty()) {
-                int worldTagID = ids[0]; // let the first tag detected be world
-                // get cTw
-                cv::Vec3d rvec, tvec;
-                cv::solvePnP(objPoints, corners[0], intrinsicsMatrix, distCoeffs, rvec, tvec);
-                cv::Mat rot; // 3x3 rot matrix for
-                cv::Rodrigues(rvec, rot);
-
-                gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
-                std::cout << std::endl;
-                std::cout << rvec << std::endl;
-                std::cout << tvec << std::endl;
-                std::cout << rot << std::endl;
-                std::cout << cTw << std::endl;
-                return;
-                /*// Add a prior on pose x0, with 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
-                auto poseNoise = noiseModel::Diagonal::Sigmas(
-                    (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3)).finished());
-                graph.addPrior(Symbol('x', 0), poses[0], poseNoise);
-
-                // Add a prior on landmark l0
-                auto pointNoise =
-                    noiseModel::Isotropic::Sigma(3, 0.1);
-                graph.addPrior(Symbol('l', 0), points[0], pointNoise);
-
-                // Add initial guesses to all observed landmarks
-                // We don't do this here, we need to do this in the inner "j" loop from above. We add apriltags as we see new ones
-                Point3 noise(-0.25, 0.20, 0.15);
-                for (size_t j = 0; j < points.size(); ++j) {
-                    // Intentionally initialize the variables off from the ground truth
-                    Point3 initial_lj = points[j] + noise;
-                    initialEstimate.insert(Symbol('l', j), initial_lj);*/
-            }
-        }
 
         }
     }
-
-
+}
 /*
 * *      f_x   0    c_x
  *      0     f_y  c_y

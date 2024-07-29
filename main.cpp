@@ -12,7 +12,7 @@
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
-    VSLAM s{};
+    slam();
 
 
     std::cout << "END" << std::endl;

@@ -79,7 +79,7 @@ void detectPoseVid () {
 
         //                          ---------------  logging image---------------
         rec.log("world/camera/image",
-                rerun::Image({image.rows, image.cols, image.channels()}, reinterpret_cast<const uint8_t*>(image.data)));
+                rerun::Image({static_cast<size_t>(image.rows), static_cast<size_t>(image.cols), static_cast<size_t>(image.channels())}, reinterpret_cast<const uint8_t*>(image.data)));
 
 
         //                         ---------------  logging corners ---------------

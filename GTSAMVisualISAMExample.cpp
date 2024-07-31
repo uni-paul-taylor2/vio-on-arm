@@ -51,6 +51,7 @@
 #include <gtsam/nonlinear/Values.h>
 
 #include <vector>
+#include <gtsam/geometry/Cal3DS2.h>
 
 using namespace std;
 using namespace gtsam;
@@ -60,10 +61,9 @@ int main(int argc, char* argv[]) {
   // Define the camera calibration parameters
   // TODO: find correct model for our camera.
   Cal3_S2::shared_ptr K(new Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0));
-
   // Define the camera observation noise model.
   // TODO: Also try with gaussian noise.
-  auto noise = noiseModel::Isotropic::Sigma(2, 1.0);  // one pixel in u and v
+  auto noise = noiseModel::Isotropic::Sigma(2, 1.0); // one pixel in u and v
 
   // Create the set of ground-truth landmarks - apriltags
   vector<Point3> points = createPoints();
@@ -94,8 +94,8 @@ int main(int argc, char* argv[]) {
       Point2 measurement = camera.project(points[j]);
       // TODO: If apriltag has not been seen yet, then add it to the initial estimate and initialize using solvePnP
       // Add measurement
-      graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2> >(measurement, noise,
-              Symbol('x', i), Symbol('l', j), K);
+      graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2>>(measurement, noise,
+                                                                            Symbol('x', i), Symbol('l', j), K);
     }
 
     // Intentionally initialize the variables off from the ground truth
@@ -115,12 +115,12 @@ int main(int argc, char* argv[]) {
     if (i == 0) {
       // Add a prior on pose x0, with 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
       auto poseNoise = noiseModel::Diagonal::Sigmas(
-          (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3)).finished());
+        (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3)).finished());
       graph.addPrior(Symbol('x', 0), poses[0], poseNoise);
 
       // Add a prior on landmark l0
       auto pointNoise =
-          noiseModel::Isotropic::Sigma(3, 0.1);
+        noiseModel::Isotropic::Sigma(3, 0.1);
       graph.addPrior(Symbol('l', 0), points[0], pointNoise);
 
       // Add initial guesses to all observed landmarks
@@ -131,15 +131,21 @@ int main(int argc, char* argv[]) {
         Point3 initial_lj = points[j] + noise;
         initialEstimate.insert(Symbol('l', j), initial_lj);
       }
-
-    } else {
+    }
+    else {
       // Update iSAM with the new factors
       isam.update(graph, initialEstimate);
       Values currentEstimate = isam.estimate();
       cout << "****************************************************" << endl;
       cout << "Frame " << i << ": " << endl;
       currentEstimate.print("Current estimate: ");
-
+      auto keys = currentEstimate.keys();
+      for (auto key : keys) {
+        cout << key;
+      }
+      cout << endl;
+      auto pose = currentEstimate.exists<Pose3>(Symbol('x', 0));
+      cout << pose.get();
       // Clear the factor graph and values for the next iteration
       graph.resize(0);
       initialEstimate.clear();
@@ -148,4 +154,5 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
 /* ************************************************************************* */

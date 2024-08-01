@@ -13,6 +13,8 @@
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/geometry/Cal3DS2.h>
 
+#include <rerun.hpp>
+
 #include <vector>
 
 
@@ -72,7 +74,20 @@ void slam() {
 
     std::cout << "Starting loop...\n";
 
+    const auto rec = rerun::RecordingStream("UnoptimizedMap");
+    rec.spawn().exit_on_failure();
 
+
+    std::array<float, 9> matPtr{};
+    int index = 0;
+    // travers cv::Mat in col-major order
+    for (int j = 0; j < 3; ++j)     // cols
+      for (int i = 0; i < 3; ++i)   // rows
+        matPtr[index++] = static_cast<float>(intrinsicsMatrix.at<double>(i, j));
+    rerun::Mat3x3 colMajIntrinsics(matPtr);
+
+    rec.log("world/camera/image",
+                rerun::Pinhole(rerun::components::PinholeProjection(colMajIntrinsics)));
 
     // Loop over the different poses, adding the observations to iSAM incrementally
     // In our case - these are images from the camera
@@ -88,7 +103,21 @@ void slam() {
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f> > corners;
         std::cout << "detecting marker(s)...";
-        getCorners(cv::imread(imgPath, cv::IMREAD_COLOR), ids, corners);
+        auto image = cv::imread(imgPath, cv::IMREAD_COLOR);
+        getCorners(image, ids, corners);
+
+        cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+        rec.log("world/camera/image",
+                rerun::Image({static_cast<size_t>(image.rows), static_cast<size_t>(image.cols), static_cast<size_t>(image.channels())}, reinterpret_cast<const uint8_t*>(image.data)));
+
+        std::vector<rerun::Position2D> corner_positions;
+        for (const auto& marker : corners) {
+            for (auto corner : marker) {
+                corner_positions.emplace_back(corner.x, corner.y);
+            }
+        }
+        // logging all corners as one point cloud
+        rec.log("world/camera/image/corners", rerun::Points2D(corner_positions).with_radii(2.0f));
 
 
         gtsam::Values currentEstimate = isam.estimate();
@@ -155,6 +184,15 @@ void slam() {
                     gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
 
                     wTc = wTt.compose(cTt.inverse()); // pose of cam wrt world
+                    // float * data = reinterpret_cast<float *>(wTc.rotation().r1().data()); // really bad; ideally should not point a float to a double
+                    rec.log("world/camera",
+                        rerun::Transform3D(rerun::Vec3D(reinterpret_cast<const float *>(wTc.translation().data())),
+                            {rerun::Vec3D(reinterpret_cast<float *>(wTc.rotation().r1().data())),
+                                    rerun::Vec3D(reinterpret_cast<float *>(wTc.rotation().r2().data())),
+                                    rerun::Vec3D(reinterpret_cast<float *>(wTc.rotation().r3().data())),
+                                    })
+                        // rerun::Transform3D(rerun::RotationAxisAngle({0.0f, 0.0f, 0.0f}, rerun::Angle::radians(0)), 1.0f)
+                        );
                     std::cout << "Calculated camera pose wrt wrld\n";
                     break;
                 }
@@ -177,6 +215,15 @@ void slam() {
                     cv::solvePnP(objPoints, corners[0], intrinsicsMatrix, distCoeffs, rvec, tvec);
                     gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
                     auto wTt = wTc.compose(cTt);
+                    rec.log(
+                        "world/marker" + std::to_string(ids[j]),
+                        rerun::Transform3D(rerun::Vec3D(reinterpret_cast<const float *>(wTc.translation().data())),
+                            {rerun::Vec3D(reinterpret_cast<float *>(wTt.rotation().r1().data())),
+                                    rerun::Vec3D(reinterpret_cast<float *>(wTt.rotation().r2().data())),
+                                    rerun::Vec3D(reinterpret_cast<float *>(wTt.rotation().r3().data())),
+                                    })
+                    );
+
                     // wTc.
                     // observedTags.insert({ids[j], wTt});
                     std::cout << "For tag l" << ids[j] << std::endl;
@@ -191,7 +238,7 @@ void slam() {
                 }
             }
 
-            initialEstimate.print("Initial Estimate");
+            /*initialEstimate.print("Initial Estimate");
             std::cout << "Updating iSAM...\n";
             // Update iSAM with the new factors
             isam.print();
@@ -202,7 +249,7 @@ void slam() {
             currentEstimate = isam.estimate();
             std::cout << "****************************************************" << std::endl;
             std::cout << "Frame " << i << ": " << std::endl;
-            currentEstimate.print("Current estimate: ");
+            currentEstimate.print("Current estimate: ");*/
 
             /*auto pose = currentEstimate.exists<gtsam::Pose3>(gtsam::Symbol('x', 0)); // current estimate of initial pose
             std::cout << pose.get();*/

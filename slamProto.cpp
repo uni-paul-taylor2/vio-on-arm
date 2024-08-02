@@ -23,8 +23,8 @@ namespace prototype {
 
     float markerLength = 0.15;
 
-    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 3075.7952, 0, 1927.995, // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
-        0, 3075.7952, 1078.1343, 0, 0, 1);
+    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 1025.26513671875, 0.0, 642.6650390625, // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
+        0.0, 1025.26513671875, 359.37811279296875, 0, 0, 1);
     cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
         -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
         -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);

@@ -18,7 +18,40 @@
 #include <vector>
 
 namespace prototype {
+
     float markerLength = 0.15;
+
+    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 3075.7952, 0, 1927.995, // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
+        0, 3075.7952, 1078.1343, 0, 0, 1);
+    cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
+        -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
+        -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
+
+
+    // Define the camera calibration parameters (for slam)
+    const boost::shared_ptr<gtsam::Cal3DS2> K(
+        new gtsam::Cal3DS2( // explicily using boost::shared_ptr<gtsam::Cal3DS2>
+            // instead of gtsam::Cal3DS2::share_ptr TODO: explain
+            intrinsicsMatrix.at<double>(0, 0), intrinsicsMatrix.at<double>(1, 2),
+            0.0, intrinsicsMatrix.at<double>(0, 2),
+            intrinsicsMatrix.at<double>(1, 2), distCoeffs.at<double>(0),
+            distCoeffs.at<double>(1), distCoeffs.at<double>(2),
+            distCoeffs.at<double>(3)));
+
+    // Define the camera observation noise model (will leave the same for now).
+    // TODO: Also try with gaussian noise.
+    auto noise = gtsam::noiseModel::Isotropic::Sigma(
+        2, 1.0); // one pixel in u and v (TODO: see if OpenCV says anything about
+    // the error in detecting tag corners)
+
+    cv::Mat objPoints(4, 1, CV_32FC3);
+    void initObjPoints(cv::Mat objPoints) {
+        // x down, y across, z up (to facilitate placing world in corner)
+        objPoints.ptr<cv::Vec3f>(0)[0] = cv::Vec3f(0, 0, 0); // top left
+        objPoints.ptr<cv::Vec3f>(0)[1] = cv::Vec3f(0, markerLength, 0); // top right
+        objPoints.ptr<cv::Vec3f>(0)[2] = cv::Vec3f(markerLength, markerLength, 0); // bottom right
+        objPoints.ptr<cv::Vec3f>(0)[3] = cv::Vec3f(markerLength, 0, 0); // bottom left
+    }
 
     void getCorners(const cv::Mat& image, std::vector<int>& ids,
                     std::vector<std::vector<cv::Point2f>>& corners) {
@@ -27,40 +60,9 @@ namespace prototype {
             corners, ids);
     }
 
+
     void slam() {
-        std::cout << "initializing variables\n";
-        // may have to read in as float (check if OpenCV needs it as floats)
-        // consider reading in as vectors instead of Mat
-        // https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
-        cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 3075.7952, 0, 1927.995,
-            0, 3075.7952, 1078.1343, 0, 0, 1);
-        cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
-            -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
-            -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
-
-        cv::Mat objPoints(4, 1, CV_32FC3);
-        // x down, y across, z up (to facilitate placing world in corner)
-        objPoints.ptr<cv::Vec3f>(0)[0] = cv::Vec3f(0, 0, 0); // top left
-        objPoints.ptr<cv::Vec3f>(0)[1] = cv::Vec3f(0, markerLength, 0); // top right
-        objPoints.ptr<cv::Vec3f>(0)[2] =
-            cv::Vec3f(markerLength, markerLength, 0); // bottom right
-        objPoints.ptr<cv::Vec3f>(0)[3] = cv::Vec3f(markerLength, 0, 0); // bottom left
-
-        // Define the camera calibration parameters
-        const boost::shared_ptr<gtsam::Cal3DS2> K(
-            new gtsam::Cal3DS2( // explicily using boost::shared_ptr<gtsam::Cal3DS2>
-                // instead of gtsam::Cal3DS2::share_ptr TODO: explain
-                intrinsicsMatrix.at<double>(0, 0), intrinsicsMatrix.at<double>(1, 2),
-                0.0, intrinsicsMatrix.at<double>(0, 2),
-                intrinsicsMatrix.at<double>(1, 2), distCoeffs.at<double>(0),
-                distCoeffs.at<double>(1), distCoeffs.at<double>(2),
-                distCoeffs.at<double>(3)));
-
-        // Define the camera observation noise model (will leave the same for now).
-        // TODO: Also try with gaussian noise.
-        auto noise = gtsam::noiseModel::Isotropic::Sigma(
-            2, 1.0); // one pixel in u and v (TODO: see if OpenCV says anything about
-        // the error in detecting tag corners)
+        initObjPoints(objPoints);
 
         // Create a NonlinearISAM object which will relinearize and reorder the
         // variables every "relinearizeInterval" updates
@@ -77,18 +79,14 @@ namespace prototype {
         rec.spawn().exit_on_failure();
         rec.set_time_sequence("Frame", 0);
 
-        std::array<float, 9> matPtr{};
-        // travers cv::Mat in col-major order
-        for (int j = 0, index = 0; j < 3; ++j) // cols
-            for (int i = 0; i < 3; ++i, ++index) // rows
-                matPtr[index] = static_cast<float>(intrinsicsMatrix.at<double>(i, j));
-        rerun::Mat3x3 colMajIntrinsics(matPtr);
-
         rec.log("world/camera", rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN);
 
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> intrinsics_Eigen(intrinsicsMatrix.ptr<double>(), intrinsicsMatrix.rows, intrinsicsMatrix.cols);
         rec.log(
             "world/camera/image",
-            rerun::Pinhole(rerun::components::PinholeProjection(colMajIntrinsics)));
+            rerun::Pinhole(rerun::components::PinholeProjection(
+                rerun::Mat3x3(static_cast<Eigen::Matrix3f>(intrinsics_Eigen.cast<float>()).data())))
+        );
 
         // Loop over the different poses, adding the observations to iSAM
         // incrementally In our case - these are images from the camera

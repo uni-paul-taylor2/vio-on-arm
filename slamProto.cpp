@@ -18,12 +18,17 @@
 #include <vector>
 
 namespace prototype {
+    struct Tag {
+        gtsam::Pose3 pose;
+        int count{};
+    };
 
     auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/");
 
     float markerLength = 0.15;
 
-    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 1025.26513671875, 0.0, 642.6650390625, // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
+    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 1025.26513671875, 0.0, 642.6650390625,
+        // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
         0.0, 1025.26513671875, 359.37811279296875, 0, 0, 1);
     cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
         -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
@@ -70,9 +75,6 @@ namespace prototype {
     }
 
 
-
-
-
     void slam() {
         initObjPoints(objPoints);
 
@@ -93,7 +95,8 @@ namespace prototype {
 
         // rec.log("world/camera", rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN);
 
-        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> intrinsics_Eigen(intrinsicsMatrix.ptr<double>(), intrinsicsMatrix.rows, intrinsicsMatrix.cols);
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> intrinsics_Eigen(
+            intrinsicsMatrix.ptr<double>(), intrinsicsMatrix.rows, intrinsicsMatrix.cols);
         rec.log(
             "world/camera/image",
             rerun::Pinhole(rerun::components::PinholeProjection(
@@ -101,22 +104,25 @@ namespace prototype {
         );
 
 
-
-
-
         // Loop over the different poses, adding the observations to iSAM
         // incrementally In our case - these are images from the camera
         constexpr int numImages = 171;
         int worldTagID;
-        std::map<int, gtsam::Pose3> observedTags; // stores all already observed tags
-        for (size_t frame_num = 35; frame_num <= numImages; ++frame_num) {            // looping through frames
-            std::cout << "\nFrame " << frame_num << "=============================================================================\n";
+        // std::map<int, gtsam::Pose3> observedTags; // stores all already observed tags
+        std::map<int, Tag> observedTags; // stores all already observed tags
+
+        // for (size_t frame_num = 35; frame_num <= numImages; ++frame_num) {
+        // int poseNum = 0;
+        for (size_t frame_num = 35; frame_num <= numImages; frame_num += 5) {
+            // looping through frames
+            std::cout << "\nFrame " << frame_num <<
+                "=============================================================================\n";
             rec.set_time_sequence("Frame", static_cast<int64_t>(frame_num));
-            std::cout << "OBSERVED TAGS......................................\n";
+            /*std::cout << "OBSERVED TAGS......................................\n";
             for (const auto& [id, pose] : observedTags) {
                 std::cout << id << ":" << pose << std::endl;
             }
-            std::cout << "..................................................\n\n";
+            std::cout << "..................................................\n\n";*/
             std::cout << "Frame: " << frame_num << std::endl;
             // get (u,v) of tags in frame
             std::cout << "Reading image...\n";
@@ -129,7 +135,8 @@ namespace prototype {
             std::cout << "\nIDS:++++++++++++++++++++++++++++++++++++++++++++\n";
             for (auto num : ids) {
                 std::cout << num << " ";
-            }std::cout<<std::endl;
+            }
+            std::cout << std::endl;
             std::cout << "IDS:++++++++++++++++++++++++++++++++++++++++++++\n";
 
             cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
@@ -148,6 +155,7 @@ namespace prototype {
                     corner_positions.emplace_back(corner.x, corner.y);
             rec.log("world/camera/image/corners",
                     rerun::Points2D(corner_positions).with_radii(4.0f));
+
 
             gtsam::Values currentEstimate = isam.estimate();
 
@@ -170,15 +178,17 @@ namespace prototype {
                     // first tag seen
                     std::cout << "First tag detectd. Setting world...\n";
                     worldTagID = ids[0]; // let the first tag detected be world
-                    observedTags.insert({worldTagID, gtsam::Pose3()});
+                    // observedTags.insert({worldTagID, });
+                    Tag tag = {gtsam::Pose3(), 0};
+                    observedTags.insert({worldTagID, tag});
                     rec.log("world/marker" + std::to_string(ids[0]),
-                                rerun::Transform3D(
-                                    rerun::Vec3D(static_cast<Eigen::Vector3f>(
-                                            gtsam::Pose3().translation().matrix().cast<float>())
-                                        .data()),
-                                    rerun::Mat3x3(static_cast<Eigen::Matrix3f>(
-                                            gtsam::Pose3().rotation().matrix().cast<float>())
-                                        .data())));
+                            rerun::Transform3D(
+                                rerun::Vec3D(static_cast<Eigen::Vector3f>(
+                                        gtsam::Pose3().translation().matrix().cast<float>())
+                                    .data()),
+                                rerun::Mat3x3(static_cast<Eigen::Matrix3f>(
+                                        gtsam::Pose3().rotation().matrix().cast<float>())
+                                    .data())));
 
                     std::cout << "World tag ID: " << worldTagID << std::endl;
                     // get cTw - pose of world wrt camera
@@ -209,74 +219,55 @@ namespace prototype {
                     auto pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);
                     graph.addPrior(gtsam::Symbol('l', ids[0]), gtsam::Point3(0, 0, 0),
                                    pointNoise);
+                    initialEstimate.insert(gtsam::Symbol('l', ids[0]), gtsam::Point3(0, 0, 0));
+
                     std::cout << "Added prior to temp GRAPH to first landmark: l" << ids[0]
                         << std::endl;
                 }
+                else {
+                    std::cout << "Calc camera pose...\n";
+                    for (int j = 0; j < ids.size(); ++j) {
+                        // calc wTc
+                        // calc camera pose wrt world
+                        if (observedTags.count(ids[j]) ==
+                            1) {
+                            // tag was seen before and we know its pose wrt world
+                            gtsam::Pose3 wTt =
+                                observedTags[ids[j]].pose; // pose of tag wrt wrld (transforms pts in
+                            // tag crdnt frm to world)
+                            std::cout << "camera has prev seen tag l" << ids[j] << std::endl;
+                            cv::Vec3d rvec, tvec;
+                            cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
+                                         rvec, tvec);
+                            gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)),
+                                             gtsam::Point3(tvec.val));
 
-                // if only one tag verify it's world ?
-                // Add factors for each landmark observation
-                // In our case - these are the apriltags - note - not all tags are visible
-                // in all frames. this "j" loop is only for the tags seen in THIS current
-                // frame "i"
-                for (size_t j = 0; j < ids.size(); ++j) {
-                    // looping through tags in frame
-                    // Create ground truth measurement
-                    // In our case, we have the "measurement" from the aruco detection (u,
-                    // v). Not sure if to use all 4 corners of the april tag or just 1 and
-                    // how that will affect the optimization.
-                    gtsam::Point2 measurement =
-                        gtsam::Point2(corners[j][0].x,
-                                      corners[j][0].y); // only using top left crnr for now
-                    // Add measurement
-                    graph.emplace_shared<gtsam::GenericProjectionFactor<
-                        gtsam::Pose3, gtsam::Point3, gtsam::Cal3DS2>>(
-                        measurement, noise, gtsam::Symbol('x', frame_num),
-                        gtsam::Symbol('l', ids[j]), K);
-                    std::cout << "Found tag l" << ids[j]
-                        << ". Adding pojection to temp GRAPH at pose x" << frame_num
-                        << std::endl;
-                }
 
-                std::cout << "Calc camera pose...\n";
-                for (int j = 0; j < ids.size(); ++j) {
-                    // calc wTc
-                    // calc camera pose wrt world
-                    if (observedTags.count(ids[j]) ==
-                        1) {
-                        // tag was seen before and we know its pose wrt world
-                        gtsam::Pose3 wTt =
-                            observedTags[ids[j]]; // pose of tag wrt wrld (transforms pts in
-                        // tag crdnt frm to world)
-                        std::cout << "camera has prev seen tag l" << ids[j] << std::endl;
-                        cv::Vec3d rvec, tvec;
-                        cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
-                                     rvec, tvec);
-                        gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)),
-                                         gtsam::Point3(tvec.val));
 
-                        wTc = wTt.compose(cTt.inverse()); // pose of cam wrt world
-                        wTc.print("wTc");
+                            wTc = wTt.compose(cTt.inverse()); // pose of cam wrt world
+                            wTc.print("wTc");
 
-                        rerun::Mat3x3 rot(static_cast<Eigen::Matrix3f>(
-                                wTc.rotation().matrix().cast<float>())
-                            .data());
-                        rerun::Vec3D trans(static_cast<Eigen::Vector3f>(
-                                wTc.translation().matrix().cast<float>())
-                            .data());
-                        rec.log("world/camera", rerun::Transform3D(trans, rot));
+                            rerun::Mat3x3 rot(static_cast<Eigen::Matrix3f>(
+                                    wTc.rotation().matrix().cast<float>())
+                                .data());
+                            rerun::Vec3D trans(static_cast<Eigen::Vector3f>(
+                                    wTc.translation().matrix().cast<float>())
+                                .data());
+                            rec.log("world/camera", rerun::Transform3D(trans, rot));
 
-                        /*rec.log("world/camera/image",
-                            rerun::Pinhole(rerun::components::PinholeProjection(colMajIntrinsics)));
-                        rec.log("world/camera/image",
-                                       rerun::Image({static_cast<size_t>(image.rows),
-                        static_cast<size_t>(image.cols),
-                        static_cast<size_t>(image.channels())}, reinterpret_cast<const
-                        uint8_t*>(image.data)));
+                            /*rec.log("world/camera/image",
+                                rerun::Pinhole(rerun::components::PinholeProjection(colMajIntrinsics)));
+                            rec.log("world/camera/image",
+                                           rerun::Image({static_cast<size_t>(image.rows),
+                            static_cast<size_t>(image.cols),
+                            static_cast<size_t>(image.channels())}, reinterpret_cast<const
+                            uint8_t*>(image.data)));
 
-                        rec.log("world/camera/image/corners",
-                        rerun::Points2D(corner_positions).with_radii(4.0f));*/
+                            rec.log("world/camera/image/corners",
+                            rerun::Points2D(corner_positions).with_radii(4.0f));*/
 
-                        break;
+                            break;
+                        }
                     }
                 }
 
@@ -288,7 +279,8 @@ namespace prototype {
 
                 std::cout << "Adding guesses for newly seen landmarks...";
                 // Add initial guesses to all newly observed landmarks
-                for (size_t j = 0; j < ids.size(); ++j) { // looping through ids for new tags
+                for (size_t j = 0; j < ids.size(); ++j) {
+                    // looping through ids for new tags
                     // Intentionally initialize the variables off from the ground truth
                     // TODO: If apriltag has not been seen yet, then add it to the initial
                     // estimate and initialize using solvePnP if
@@ -306,22 +298,33 @@ namespace prototype {
                                          gtsam::Point3(tvec.val));
                         auto wTt = wTc.compose(cTt);
 
+                        // std::string info = "Tag ID: " + std::to_string(ids[j]) + "\nrvec:";
+                        /*for (auto num : rvec.row(0)) {
+                            info += std::to_string(num) + " ";
+                        }
+                        info += "\ntvec";
+                        for (auto num : tvec.row(0)) {
+                            info += std::to_string(num) + " ";
+                        }*/
+                        // rec.log("logs", rerun::TextLog(info).with_level(rerun::TextLogLevel::Trace));
+
+
                         rec.log("world/marker" + std::to_string(ids[j]),
                                 rerun::Transform3D(
                                     rerun::Vec3D(static_cast<Eigen::Vector3f>(
                                             wTt.translation().matrix().cast<float>())
                                         .data()),
                                     rerun::Mat3x3(static_cast<Eigen::Matrix3f>(
-                                            wTc.rotation().matrix().cast<float>())
+                                            wTt.rotation().matrix().cast<float>())
                                         .data())));
 
-                        observedTags.insert({ids[j], wTt});
+                        observedTags.insert({ids[j], {wTt, 0}});
                         std::cout << "For tag l" << ids[j] << std::endl;
                         wTc.print("wTc");
                         cTt.print("SolvePnP output: cTt");
                         wTt.print("wTt");
                         gtsam::Point3 initial_lj = wTt.transformFrom(
-                            gtsam::Point3(0, 0, 0)); // coordiantes of top left crnr of tag
+                            gtsam::Point3(0, 0, 0)); // coordiantes of top left crnr of tag TODO
                         // (assuming tag origin is top left)
                         std::cout << "Top left crnr wrt wrld: " << initial_lj << std::endl;
                         // get cam pose wrt world; get pts wrt world; add to graph (deal with
@@ -332,26 +335,73 @@ namespace prototype {
                     }
                 }
 
-                /*initialEstimate.print("Initial Estimate");
-                std::cout << "Updating iSAM...\n";
+                // if only one tag verify it's world ?
+                // Add factors for each landmark observation
+                // In our case - these are the apriltags - note - not all tags are visible
+                // in all frames. this "j" loop is only for the tags seen in THIS current
+                // frame "i"
+                for (size_t j = 0; j < ids.size(); ++j) { // emplacing (u,v)
+                    // looping through tags in frame
+                    // Create ground truth measurement
+                    // In our case, we have the "measurement" from the aruco detection (u,
+                    // v). Not sure if to use all 4 corners of the april tag or just 1 and
+                    // how that will affect the optimization.
+
+                    observedTags[ids[j]].count += 1;
+
+                    gtsam::Point2 measurement =
+                        gtsam::Point2(corners[j][0].x,
+                                      corners[j][0].y); // only using top left crnr for now
+                    // Add measurement
+                    graph.emplace_shared<gtsam::GenericProjectionFactor<
+                        gtsam::Pose3, gtsam::Point3, gtsam::Cal3DS2>>(
+                        measurement, noise, gtsam::Symbol('x', frame_num),
+                        gtsam::Symbol('l', ids[j]), K);
+                    std::cout << "Found tag l" << ids[j]
+                        << ". Adding pojection to temp GRAPH at pose x" << frame_num
+                        << std::endl;
+
+                    std::string info = "Tag ID: " + std::to_string(ids[j]) + "\nrvec:";
+                    rec.log("logs", rerun::TextLog(info).with_level(rerun::TextLogLevel::Trace));
+                }
+
+
+                initialEstimate.print("Initial Estimate");
+
                 // Update iSAM with the new factors
-                isam.print();
-                isam.printStats();
-                isam.update(graph, initialEstimate);
-                isam.saveGraph("graph.txt");
+                bool update = true;
+                for (int id : ids) {
+                    if (observedTags[id].count < 5) {
+                        update = false;
+                    }
+                }
+
+
+                if(update) {
+                    graph.print("***********************************GRAPH***********************************");
+                    std::cout << "Updating iSAM...\n";
+                    isam.print();
+                    isam.printStats();
+                    isam.update(graph, initialEstimate);
+                    isam.saveGraph("graph.txt");
+
+                    // Clear the factor graph and values for the next iteration
+                    std::cout << "Clearing temp graph and vals...\n";
+                    graph.resize(0);
+                    initialEstimate.clear();
+                    break;
+                }
+
                 // gtsam::Values currentEstimate = isam.estimate();
                 currentEstimate = isam.estimate();
                 std::cout << "****************************************************" <<
-                std::endl; std::cout << "Frame " << i << ": " << std::endl;
-                currentEstimate.print("Current estimate: ");*/
+                std::endl; std::cout << "Frame " << frame_num << ": " << std::endl;
+                currentEstimate.print("Current estimate: ");
 
                 /*auto pose = currentEstimate.exists<gtsam::Pose3>(gtsam::Symbol('x', 0));
                 // current estimate of initial pose std::cout << pose.get();*/
 
-                // Clear the factor graph and values for the next iteration
-                std::cout << "Clearing temp graph and vals...\n";
-                graph.resize(0);
-                initialEstimate.clear();
+
             }
         }
     }

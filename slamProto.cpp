@@ -36,14 +36,25 @@ namespace prototype {
 
 
     // Define the camera calibration parameters (for GTSAM)
-    const boost::shared_ptr<gtsam::Cal3DS2> K(
+    /*const boost::shared_ptr<gtsam::Cal3DS2> K(
         new gtsam::Cal3DS2( // explicily using boost::shared_ptr<gtsam::Cal3DS2>
             // instead of gtsam::Cal3DS2::share_ptr TODO: explain
             intrinsicsMatrix.at<double>(0, 0), intrinsicsMatrix.at<double>(1, 2),
             0.0, intrinsicsMatrix.at<double>(0, 2),
             intrinsicsMatrix.at<double>(1, 2), distCoeffs.at<double>(0),
             distCoeffs.at<double>(1), distCoeffs.at<double>(2),
-            distCoeffs.at<double>(3)));
+            distCoeffs.at<double>(3)));*/
+    const boost::shared_ptr<gtsam::Cal3DS2> K(
+        new gtsam::Cal3DS2(
+           intrinsicsMatrix.at<double>(0, 0),
+           intrinsicsMatrix.at<double>(1, 1),
+           0.0,
+           intrinsicsMatrix.at<double>(0, 2),
+           intrinsicsMatrix.at<double>(1, 2),
+           distCoeffs.at<double>(0),
+           distCoeffs.at<double>(1),
+           distCoeffs.at<double>(2),
+           distCoeffs.at<double>(3)));
 
     // Define the camera observation noise model (will leave the same for now).
     // TODO: Also try with gaussian noise.
@@ -112,8 +123,8 @@ namespace prototype {
         std::map<int, Tag> observedTags; // stores all already observed tags
 
         // for (size_t frame_num = 35; frame_num <= numImages; ++frame_num) {
-        // int poseNum = 0;
-        for (size_t frame_num = 35; frame_num <= numImages; frame_num += 5) {
+        int poseNum = 0;
+        for (size_t frame_num = 54; frame_num <= numImages; frame_num += 5) {
             // looping through frames
             std::cout << "\nFrame " << frame_num <<
                 "=============================================================================\n";
@@ -209,7 +220,7 @@ namespace prototype {
                             gtsam::Vector3::Constant(0.3))
                         .finished());
                     graph.addPrior(
-                        gtsam::Symbol('x', frame_num), wTc,
+                        gtsam::Symbol('x', poseNum), wTc,
                         poseNoise); // since we're using j, not every increment of the pose
                     // will have a value in the factor graph; only those at
                     // which a marker was detected
@@ -219,6 +230,7 @@ namespace prototype {
                     auto pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);
                     graph.addPrior(gtsam::Symbol('l', ids[0]), gtsam::Point3(0, 0, 0),
                                    pointNoise);
+
                     initialEstimate.insert(gtsam::Symbol('l', ids[0]), gtsam::Point3(0, 0, 0));
 
                     std::cout << "Added prior to temp GRAPH to first landmark: l" << ids[0]
@@ -275,7 +287,7 @@ namespace prototype {
                 // Use solvePnP and the apriltag map you are building up.
                 std::cout << "Adding to VALUES initial guess for pose x" << frame_num
                     << std::endl;
-                initialEstimate.insert(gtsam::Symbol('x', frame_num), wTc);
+                initialEstimate.insert(gtsam::Symbol('x', poseNum), wTc);
 
                 std::cout << "Adding guesses for newly seen landmarks...";
                 // Add initial guesses to all newly observed landmarks
@@ -355,7 +367,7 @@ namespace prototype {
                     // Add measurement
                     graph.emplace_shared<gtsam::GenericProjectionFactor<
                         gtsam::Pose3, gtsam::Point3, gtsam::Cal3DS2>>(
-                        measurement, noise, gtsam::Symbol('x', frame_num),
+                        measurement, noise, gtsam::Symbol('x', poseNum),
                         gtsam::Symbol('l', ids[j]), K);
                     std::cout << "Found tag l" << ids[j]
                         << ". Adding pojection to temp GRAPH at pose x" << frame_num
@@ -400,10 +412,12 @@ namespace prototype {
 
                 /*auto pose = currentEstimate.exists<gtsam::Pose3>(gtsam::Symbol('x', 0));
                 // current estimate of initial pose std::cout << pose.get();*/
-
+                poseNum++;
 
             }
         }
+        graph.print("***********************************GRAPH***********************************");
+        isam.update(graph, initialEstimate);
     }
 } // namespace prototype
 

@@ -12,6 +12,8 @@
 #include <gtsam/nonlinear/NonlinearISAM.h>
 #include <gtsam/nonlinear/Values.h>
 #include <gtsam/slam/ProjectionFactor.h>
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+
 
 #include <rerun.hpp>
 
@@ -124,7 +126,7 @@ namespace prototype {
 
         // for (size_t frame_num = 35; frame_num <= numImages; ++frame_num) {
         int poseNum = 0;
-        for (size_t frame_num = 54; frame_num <= numImages; frame_num += 5) {
+        for (size_t frame_num = 0; frame_num <= numImages; frame_num += 10) {
             // looping through frames
             std::cout << "\nFrame " << frame_num <<
                 "=============================================================================\n";
@@ -381,7 +383,7 @@ namespace prototype {
                 initialEstimate.print("Initial Estimate");
 
                 // Update iSAM with the new factors
-                bool update = true;
+                bool update = false;
                 for (int id : ids) {
                     if (observedTags[id].count < 5) {
                         update = false;
@@ -416,8 +418,21 @@ namespace prototype {
 
             }
         }
-        graph.print("***********************************GRAPH***********************************");
-        isam.update(graph, initialEstimate);
+
+        // batch optimization using Levenberg-Marquardt
+        std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------";
+        gtsam::LevenbergMarquardtParams param;
+        param.verbosityLM = gtsam::LevenbergMarquardtParams::SUMMARY;
+        auto result = gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, param).optimize();
+        result.print("Result");
+
+
+        // auto pose = result.at<gtsam::Pose3>(0);
+        // printf("first pose: %f,%f,%f\n",pose.z(), pose.x(), pose.y());
+        // pose = result.at<gtsam::Pose3>(1);
+        // printf("second pose: %f,%f,%f\n",pose.z(), pose.x(), pose.y());
+        /*graph.print("***********************************GRAPH***********************************");
+        isam.update(graph, initialEstimate);*/
     }
 } // namespace prototype
 

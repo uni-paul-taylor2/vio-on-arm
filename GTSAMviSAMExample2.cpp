@@ -57,7 +57,8 @@ using namespace std;
 using namespace gtsam;
 
 /* ************************************************************************* */
-int adj() {
+int adj(int numPoses=-1, int numLandmarks=-1) {
+
     // Define the camera calibration parameters
     Cal3_S2::shared_ptr K(new Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0));
     // Define the camera observation noise model.
@@ -67,7 +68,13 @@ int adj() {
     vector<Point3> points = createPoints();
 
     // Create the set of ground-truth poses
-    vector<Pose3> poses = createPoses();
+    if(numPoses < 0) numPoses = 8;
+    vector<Pose3> poses = createPoses(
+        gtsam::Pose3(gtsam::Rot3::Ypr(M_PI/2,0,-M_PI/2), gtsam::Point3(30, 0, 0)),
+        gtsam::Pose3(gtsam::Rot3::Ypr(0,-M_PI/4,0), gtsam::Point3(sin(M_PI/4)*30, 0, 30*(1-sin(M_PI/4)))),
+        numPoses);
+
+    if(numLandmarks < 0) numLandmarks = points.size();
 
     // Create a NonlinearISAM object which will relinearize and reorder the variables
     // every "relinearizeInterval" updates
@@ -78,11 +85,14 @@ int adj() {
     NonlinearFactorGraph graph;
     Values initialEstimate;
 
+
+
     // Loop over the different poses, adding the observations to iSAM incrementally
-    for (size_t i = 0; i < poses.size(); ++i) {
+    // for (size_t i = 0; i < poses.size(); ++i) {
+    for (size_t i = 0; i < numPoses; ++i) {
         // Add factors for each landmark observation
         // for (size_t j = 0; j < points.size(); ++j) {
-        for (size_t j = 0; j <= 1; ++j) {
+        for (size_t j = 0; j < numLandmarks; ++j) {
             // Create ground truth measurement
             PinholeCamera<Cal3_S2> camera(poses[i], *K);
             Point2 measurement = camera.project(points[j]);
@@ -117,7 +127,7 @@ int adj() {
             // Add initial guesses to all observed landmarks
             Point3 noise(-0.25, 0.20, 0.15);
             // for (size_t j = 0; j < points.size(); ++j) {
-            for (size_t j = 0; j <= 1; ++j) {
+            for (size_t j = 0; j < numLandmarks; ++j) {
                 // Intentionally initialize the variables off from the ground truth
                 Point3 initial_lj = points[j] + noise;
                 initialEstimate.insert(Symbol('l', j), initial_lj);
@@ -125,6 +135,7 @@ int adj() {
         }
         else {
             // Update iSAM with the new factors
+            cout << "First update call\n";
             isam.update(graph, initialEstimate);
             Values currentEstimate = isam.estimate();
             cout << "****************************************************" << endl;

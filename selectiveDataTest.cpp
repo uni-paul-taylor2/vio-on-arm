@@ -7,7 +7,13 @@
 #include <gtsam/geometry/Point3.h>
 
 #include <gtsam/geometry/PinholeCamera.h>
-#include <gtsam/geometry/Cal3_S2.h>
+#include <gtsam/geometry/Cal3DS2.h>
+#include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/nonlinear/NonlinearFactorGraph.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/ProjectionFactor.h>
 
 #include "rerunLogger.h"
 
@@ -181,11 +187,26 @@ namespace selective_data {
         // Create the set of ground-truth poses
         vector<Pose3> poses = createPoses();
 
-        // Create a NonlinearISAM object which will relinearize and reorder the variables
+        /*// Create a NonlinearISAM object which will relinearize and reorder the variables
         // every "relinearizeInterval" updates
         int relinearizeInterval = 3;
         // int relinearizeInterval = 4;
         NonlinearISAM isam(relinearizeInterval);
+        */
+
+        // Create an iSAM2 object. Unlike iSAM1, which performs periodic batch steps to maintain proper linearization
+        // and efficient variable ordering, iSAM2 performs partial relinearization/reordering at each step. A parameter
+        // structure is available that allows the user to set various properties, such as the relinearization threshold
+        // and type of linear solver. For this example, we we set the relinearization threshold small so the iSAM2 result
+        // will approach the batch result.
+        ISAM2Params parameters;
+        parameters.relinearizeThreshold = 0.01;
+        // parameters.relinearizeSkip = 10; // works
+        // parameters.relinearizeSkip = 9; // works
+        parameters.relinearizeSkip = 8; // corresponds to the number of landmarks...conincidence?
+        // parameters.relinearizeSkip = 7; // fails: gtsam::IndeterminantLinearSystemException on 7th call
+        // parameters.enableRelinearization = false;
+        ISAM2 isam(parameters);
 
         // Create a Factor Graph and Values to hold the new data
         NonlinearFactorGraph graph;
@@ -271,7 +292,9 @@ namespace selective_data {
                 cout << "First update call\n";
                 // isam.print("ISAM_)(*&^%^&*()_$%^&*()*&^%$^&*())(^&%$#$%^&*)()*&$%#$%^&*()&*^$%^#%$^&*(*(&^%$#%^&*^%#$%^&**&$^#%%$%&*&^%$#%$^%&*&*^$");
                 isam.update(graph, initialEstimate);
-                Values currentEstimate = isam.estimate();
+                isam.update();
+                // Values currentEstimate = isam.estimate();
+                Values currentEstimate = isam.calculateEstimate();
                 cout << "****************************************************" << endl;
                 cout << "Frame " << i << ": " << endl;
                 currentEstimate.print("Current estimate: ");

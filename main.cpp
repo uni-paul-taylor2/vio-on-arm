@@ -13,7 +13,7 @@
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
-    // prototype::slam();
+    prototype::slam();
     // detectPoseVid();
     /*
      * Defaults:
@@ -26,11 +26,11 @@ int main() {
      * At least 5 landmarks are needed else gtsam::IndeterminantLinearSystemException thrown near pose variable
      * Increasing the number poses to 20 also worked (safe to assume on upper limit on poses?)
      */
-    adj(20, -1);
+    // adj(20, -1);
 
     // selective_data::createPoints();
     // selective_data::createPoses();
-    std::cout << "====================================SLAM+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+    // std::cout << "====================================SLAM+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
     // selective_data::slam();
 
     std::cout << "END" << std::endl;

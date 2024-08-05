@@ -83,6 +83,7 @@ int main(int argc, char* argv[]) {
   // Loop over the different poses, adding the observations to iSAM incrementally
   // In our case - these are images from the camera
   for (size_t i = 0; i < poses.size(); ++i) {
+    int pose = 12 + i + 3;
     // Add factors for each landmark observation
     // In our case - these are the apriltags - note - not all tags are visible in all frames.
     // this "j" loop is only for the tags seen in THIS current frame "i"
@@ -95,7 +96,7 @@ int main(int argc, char* argv[]) {
       // TODO: If apriltag has not been seen yet, then add it to the initial estimate and initialize using solvePnP
       // Add measurement
       graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2>>(measurement, noise,
-                                                                            Symbol('x', i), Symbol('l', j), K);
+                                                                            Symbol('x', pose), Symbol('l', j), K);
     }
 
     // Intentionally initialize the variables off from the ground truth
@@ -106,7 +107,7 @@ int main(int argc, char* argv[]) {
 
     // Add an initial guess for the current pose
     // Use solvePnP and the apriltag map you are building up.
-    initialEstimate.insert(Symbol('x', i), initial_xi);
+    initialEstimate.insert(Symbol('x', pose), initial_xi);
 
     // If this is the first iteration, add a prior on the first pose to set the coordinate frame
     // and a prior on the first landmark to set the scale
@@ -116,7 +117,7 @@ int main(int argc, char* argv[]) {
       // Add a prior on pose x0, with 30cm std on x,y,z 0.1 rad on roll,pitch,yaw
       auto poseNoise = noiseModel::Diagonal::Sigmas(
         (Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.3)).finished());
-      graph.addPrior(Symbol('x', 0), poses[0], poseNoise);
+      graph.addPrior(Symbol('x', pose), poses[0], poseNoise);
 
       // Add a prior on landmark l0
       auto pointNoise =
@@ -144,8 +145,8 @@ int main(int argc, char* argv[]) {
         cout << key;
       }
       cout << endl;
-      auto pose = currentEstimate.exists<Pose3>(Symbol('x', 0));
-      cout << pose.get();
+      // auto pose = currentEstimate.exists<Pose3>(Symbol('x', 0));
+      // cout << pose.get();
       // Clear the factor graph and values for the next iteration
       graph.resize(0);
       initialEstimate.clear();

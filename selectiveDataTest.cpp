@@ -9,14 +9,28 @@
 #include <gtsam/geometry/PinholeCamera.h>
 #include <gtsam/geometry/Cal3_S2.h>
 
-namespace selective_data {
+#include "rerunLogger.h"
 
-    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) << 1025.26513671875, 0.0, 642.6650390625,
-        // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
-        0.0, 1025.26513671875, 359.37811279296875, 0, 0, 1);
+namespace selective_data {
+    int startFrame = 54,
+        endFrame = 63;
+
+    // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
+    cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) <<
+        1025.26513671875, 0.0, 642.6650390625,
+        0.0, 1025.26513671875, 359.37811279296875,
+        0, 0, 1);
+
     cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
         -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
         -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
+
+    /*cv::Mat intrinsicsMatrix = (cv::Mat_<float>(3,3) <<
+       3075.7952, 0, 1927.995,
+       0, 3075.7952, 1078.1343,
+       0, 0, 1);*/
+
+
 
     cv::Mat objPoints(4, 1, CV_32FC3);
 
@@ -95,15 +109,20 @@ namespace selective_data {
         // Default values give a circular trajectory, radius 30 at pi/4 intervals, always facing the circle center
         std::vector<gtsam::Pose3> poses;
 
-        for (size_t frame_num = 54; frame_num <= 61; frame_num++) { // 8 frames with only tags 25 and 22
+        // for (size_t frame_num = 54; frame_num <= 61; frame_num++) { // 8 frames with only tags 25 and 22
+        for (size_t frame_num = startFrame; frame_num <= endFrame; frame_num++) {
+
             const cv::Mat image = cv::imread(partPath + std::to_string(frame_num) + ".png", cv::IMREAD_COLOR);
             std::vector<int> ids;
             std::vector<std::vector<cv::Point2f>> corners;
-            cv::aruco::detectMarkers(image, cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), corners, ids);
+            cv::aruco::detectMarkers(image, cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), corners,
+                                     ids);
 
             for (int j = 0; j < ids.size(); ++j) {
-                if (observedTagsPoses.count(ids[j]) == 1) { // tag was seen before and we know its pose wrt world
-                    gtsam::Pose3 wTt = observedTagsPoses[ids[j]]; // pose of tag wrt wrld (transforms pts in tag crdnt to world)
+                if (observedTagsPoses.count(ids[j]) == 1) {
+                    // tag was seen before and we know its pose wrt world
+                    gtsam::Pose3 wTt = observedTagsPoses[ids[j]];
+                    // pose of tag wrt wrld (transforms pts in tag crdnt to world)
                     std::cout << "using tag " << ids[j] << " to calc cam pose." << std::endl;
                     cv::Vec3d rvec, tvec;
                     cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
@@ -123,7 +142,16 @@ namespace selective_data {
         return poses;
     }
 
+
     void slam() {
+        auto rec = startLogger();
+        Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> intrinsics_Eigen(
+            intrinsicsMatrix.ptr<double>(), intrinsicsMatrix.rows, intrinsicsMatrix.cols);
+        rec.log(
+            "world/camera/image",
+            rerun::Pinhole(rerun::components::PinholeProjection(
+                rerun::Mat3x3(static_cast<Eigen::Matrix3f>(intrinsics_Eigen.cast<float>()).data())))
+        );
         // Define the camera calibration parameters
         // Cal3_S2::shared_ptr K(new Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0));
 
@@ -168,33 +196,40 @@ namespace selective_data {
         int currentFrame = 54;
         // Loop over the different poses, adding the observations to iSAM incrementally
         for (size_t i = 0; i < poses.size(); ++i) {
+            logTextTrace(rec, "Current loop: " + to_string(i), i);
+            logPose(rec, poses[i], i, "world/camera");
             // Add factors for each landmark observation
             for (size_t j = 0; j < points.size(); ++j) {
                 // Create ground truth measurement
+                // PinholeCamera<Cal3DS2> camera(poses[i]);
                 PinholeCamera<Cal3DS2> camera(poses[i], *K);
                 Point2 measurement = camera.project(points[j]);
+                log2DPoint(rec, measurement, i, "world/camera/image/projpoint" + std::to_string(j), 1);
                 // Add measurement
-                graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3DS2>>(measurement, noise,
-                                                                                      Symbol('x', i), Symbol('l', j), K);
+                /*graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3DS2>>(measurement, noise,
+                                                                                      Symbol('x', i), Symbol('l', j), K);*/
             }
         // for (size_t i = 0; i < numPoses; ++i) {
-            /*// Add factors for each landmark observation
+            // Add factors for each landmark observation
             const cv::Mat image = cv::imread(partPath + std::to_string(currentFrame++) + ".png", cv::IMREAD_COLOR);
+            logCVImage(rec, image, i, "world/camera/image");
             std::vector<int> ids;
             std::vector<std::vector<cv::Point2f>> corners;
             cv::aruco::detectMarkers(image, cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), corners, ids);
             // for (size_t j = 0; j < points.size(); ++j) {
             // for (size_t j = 0; j < numLandmarks; ++j) {
             int j=0;
-            for (auto marker : corners) {
+            for (const auto& marker : corners) {
                 // Create ground truth measurement
                 for (auto corner: marker){
                     auto measurement = gtsam::Point2(corner.x, corner.y);
+                    log2DPoint(rec, measurement, i, "world/camera/image/PnPpoint" + std::to_string(j), 3);
                     // Add measurement
-                    graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2>>(measurement, noise,
-                                                                                          Symbol('x', i), Symbol('l', j++), K);
+                    graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3DS2>>(measurement, noise,
+                                                                                          Symbol('x', i), Symbol('l', j), K);
+                    j++;
                 }
-            }*/
+            }
 
             // Intentionally initialize the variables off from the ground truth
             // Pose3 noise(Rot3::Rodrigues(-0.1, 0.2, 0.25), Point3(0.05, -0.10, 0.20));
@@ -223,6 +258,7 @@ namespace selective_data {
                 // Add initial guesses to all observed landmarks
                 // Point3 noise(-0.25, 0.20, 0.15);
                 for (size_t j = 0; j < points.size(); ++j) {
+                    log3DPoint(rec, points[j], i, "world/l" + std::to_string(j), 2);
                 // for (size_t j = 0; j < numLandmarks; ++j) {
                     // Intentionally initialize the variables off from the ground truth
                     // Point3 initial_lj = points[j] + noise;
@@ -233,6 +269,7 @@ namespace selective_data {
             else {
                 // Update iSAM with the new factors
                 cout << "First update call\n";
+                // isam.print("ISAM_)(*&^%^&*()_$%^&*()*&^%$^&*())(^&%$#$%^&*)()*&$%#$%^&*()&*^$%^#%$^&*(*(&^%$#%^&*^%#$%^&**&$^#%%$%&*&^%$#%$^%&*&*^$");
                 isam.update(graph, initialEstimate);
                 Values currentEstimate = isam.estimate();
                 cout << "****************************************************" << endl;

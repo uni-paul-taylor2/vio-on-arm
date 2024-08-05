@@ -19,7 +19,8 @@ include_directories(${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${GTSAM_INCLUDE_
 
 add_executable(Dev main.cpp
         VSLAM.cpp
-        VSLAM.h)
+        VSLAM.h
+        rerunLogger.h)
 
 add_executable(gtsamExample GTSAMVisualISAMExample.cpp )
 

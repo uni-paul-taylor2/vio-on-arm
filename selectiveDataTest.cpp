@@ -152,31 +152,31 @@ namespace selective_data {
 
             bool got_pose = false;
             for (int j = 0; j < ids.size(); ++j) {
-                cv::Vec3d rvec, tvec;
-                cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
-                             rvec, tvec);
                 if (!got_pose) {
                     // tag was seen before and we know its pose wrt world
                     gtsam::Pose3 wTt = observedTagsPoses[ids[j]];
                     // pose of tag wrt wrld (transforms pts in tag crdnt to world)
                     std::cout << "using tag " << ids[j] << " to calc cam pose." << std::endl;
-
+                    cv::Vec3d rvec, tvec;
+                    cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
+                                 rvec, tvec);
                     gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)),
                                      gtsam::Point3(tvec.val));
 
                     auto wTc = wTt.compose(cTt.inverse()); // pose of cam wrt world
                     poses.push_back(wTc);
                     got_pose = true;
+
+                    std::vector<cv::Point2d> imgPts;
+                    cv::projectPoints(cvPts, rvec, tvec, intrinsicsMatrix, distCoeffs, imgPts);
+                    rec.set_time_sequence("Frame", j);
+                    std::vector<rerun::Position2D> rrPts;
+                    for (auto pt : imgPts) {
+                        rrPts.push_back(rerun::Position2D(pt.x, pt.y));
+                    }
+                    // = {rerun::Position3D(point.x(), point.y(), point.z())};
+                    rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
                 }
-                std::vector<cv::Point2d> imgPts;
-                cv::projectPoints(cvPts, rvec, tvec, intrinsicsMatrix, distCoeffs, imgPts);
-                rec.set_time_sequence("Frame", 0);
-                std::vector<rerun::Position2D> rrPts;
-                for (auto pt : imgPts) {
-                    rrPts.push_back(rerun::Position2D(pt.x, pt.y));
-                }
-                // = {rerun::Position3D(point.x(), point.y(), point.z())};
-                rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
 
             }
         }

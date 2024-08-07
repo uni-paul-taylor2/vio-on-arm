@@ -10,10 +10,17 @@
 #include "GTSAMviSAMExample2.cpp"
 #include "selectiveDataTest.cpp"
 
+#include "opencvProjTest.h"
+
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
-    prototype::slam();
+
+    opencvProjTest test{};
+    test.TestOneImage();
+
+
+    // prototype::slam();
     // detectPoseVid();
     /*
      * Defaults:
@@ -27,8 +34,10 @@ int main() {
      * Increasing the number poses to 20 also worked (safe to assume on upper limit on poses?)
      */
     // adj(20, -1);
-
-    // selective_data::createPoints();
+    /*auto rec = rerun::RecordingStream("Logger");
+    rec.spawn().exit_on_failure();
+    rec.set_time_sequence("Frame", 0);
+    selective_data::createPoints(rec);*/
     // selective_data::createPoses();
     // std::cout << "====================================SLAM+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
     // selective_data::slam();

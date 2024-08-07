@@ -2,6 +2,7 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+// #include <opencv2/core/eigen.hpp>
 
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/geometry/Point3.h>
@@ -27,6 +28,11 @@ namespace selective_data {
         0.0, 1025.26513671875, 359.37811279296875,
         0, 0, 1);
 
+    /*cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) <<
+        3075.7952, 0, 1927.995,
+            0, 3075.7952, 1078.1343,
+            0, 0, 1);*/
+
     cv::Mat distCoeffs = (cv::Mat_<double>(1, 14) << 2.0888574, -82.303825,
         -0.00071347022, 0.0020022474, 315.66144, 1.8588818,
         -80.083954, 308.98071, 0, 0, 0, 0, 0, 0);
@@ -40,7 +46,7 @@ namespace selective_data {
 
     cv::Mat objPoints(4, 1, CV_32FC3);
 
-    std::string partPath = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image";
+    std::string partPath = "/home/zakareeyah/CLionProjects/Dev/original order/vid_APRILTAG_36h11_720p/image";
 
 
     std::map<int, gtsam::Pose3> observedTagsPoses;
@@ -50,7 +56,7 @@ namespace selective_data {
      * Parse images using OpenCV and return the points of
      * @return
      */
-    std::vector<gtsam::Point3> createPoints() {
+    std::vector<gtsam::Point3> createPoints(const rerun::RecordingStream& rec) {
 
         // Create the set of ground-truth landmarks
         std::vector<gtsam::Point3> points;
@@ -64,7 +70,7 @@ namespace selective_data {
         // const std::string imgPath = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image34.png"; // ids: 21
         // const std::string imgPath = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image35.png"; // 21, 25
         // const std::string imgPath2 = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image36.png"; // ids: 25
-        const std::string imgPath2 = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image54.png"; // ids: 25, 22 (from frame 54-63 inclusive)
+        const std::string imgPath2 = "/home/zakareeyah/CLionProjects/Dev/original order/vid_APRILTAG_36h11_720p/image54.png"; // ids: 25, 22 (from frame 54-63 inclusive)
 
 
         // std::string partPath = "/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/image";
@@ -103,9 +109,24 @@ namespace selective_data {
             points.push_back(pose.transformFrom(gtsam::Point3(-markerLength/2.f, -markerLength/2.f, 0)));
         }
 
+        std::vector<cv::Point3d> cvPts;
+        std::vector<cv::Point2d> cvPts2d;
         for (const auto& point : points) {
-            std::cout << point << std::endl << std::endl;
+            cvPts.push_back(cv::Point3d(point.x(), point.y(), point.z()));
         }
+        // /*cv::Mat rotMat;
+        // cv::Rodrigues(rvec, rotMat);*/
+        std::vector<cv::Point2d> imgPts;
+        cv::projectPoints(cvPts, rvec, tvec, intrinsicsMatrix, distCoeffs, imgPts);
+        rec.set_time_sequence("Frame", 0);
+        std::vector<rerun::Position2D> rrPts;
+        for (auto pt : imgPts) {
+            rrPts.push_back(rerun::Position2D(pt.x, pt.y));
+        }
+        // = {rerun::Position3D(point.x(), point.y(), point.z())};
+        rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
+        logCVImage(rec, image, 0);
+
         return points;
     }
 
@@ -182,7 +203,7 @@ namespace selective_data {
         auto noise = noiseModel::Isotropic::Sigma(2, 1.0); // one pixel in u and v
 
         // Create the set of ground-truth landmarks - apriltags
-        vector<Point3> points = createPoints();
+        vector<Point3> points = createPoints(rec);
 
         // Create the set of ground-truth poses
         vector<Pose3> poses = createPoses();
@@ -223,9 +244,30 @@ namespace selective_data {
             for (size_t j = 0; j < points.size(); ++j) {
                 // Create ground truth measurement
                 // PinholeCamera<Cal3DS2> camera(poses[i]);
-                PinholeCamera<Cal3DS2> camera(poses[i], *K);
+                PinholeCamera<Cal3DS2> camera(poses[i].inverse(), *K);
                 Point2 measurement = camera.project(points[j]);
                 log2DPoint(rec, measurement, i, "world/camera/image/projpoint" + std::to_string(j), 1);
+
+                /*// cv::Mat rotMat = static_cast<Eigen::Matrix3d>(poses[i].rotation().matrix());
+                cv::Mat cvRotMat;
+                auto rotMat = poses[i].rotation().matrix();
+                for (int rowIndex = 0; rowIndex < 3; ++rowIndex) {
+                    for (int colIndex = 0; colIndex < 3; ++colIndex) {
+                        cvRotMat.at<double>(rowIndex, colIndex) = rotMat.row(rowIndex).col(colIndex).value();
+                    }
+                }
+
+                cv::Vec3d rvec;
+                cv::Rodrigues(cvRotMat, rvec);
+
+                auto gtsamTrans = poses[i].translation();
+
+                cv::Vec3d tvec(gtsamTrans.x(),gtsamTrans.y(),gtsamTrans.z() );
+                // cv::eigen2cv(static_cast<Eigen::Matrix3d>(poses[i].translation().matrix()), tvec);
+
+                std::vector<cv::Point2d> imagePoints{};
+                cv::projectPoints(std::vector<cv::Point3d>(), rvec, tvec, intrinsicsMatrix, distCoeffs, imagePoints);
+                log2DPoint(rec, gtsam::Point2(imagePoints[0].x, imagePoints[0].y), i, "world/camera/image/CVprojpoint" + std::to_string(j), 0);*/
                 // Add measurement
                 /*graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3DS2>>(measurement, noise,
                                                                                       Symbol('x', i), Symbol('l', j), K);*/
@@ -303,6 +345,8 @@ namespace selective_data {
                 initialEstimate.clear();
             }
         }
+
+        // auto final
     }
 
 }

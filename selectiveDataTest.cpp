@@ -51,6 +51,10 @@ namespace selective_data {
 
     std::map<int, gtsam::Pose3> observedTagsPoses;
 
+    std::vector<cv::Vec3d> pose_rvecs;
+    std::vector<cv::Vec3d> pose_tvecs;
+
+    std::vector<cv::Point3d> cvPts;
     /* ************************************************************************* */
     /**
      * Parse images using OpenCV and return the points of
@@ -91,13 +95,14 @@ namespace selective_data {
         observedTagsPoses.insert({worldTagID, gtsam::Pose3()});
         std::cout << "World Tag ID: " << worldTagID << std::endl;
 
-        cv::Vec3d rvec, tvec;
-        cv::solvePnP(objPoints, corners[0], prototype::intrinsicsMatrix, distCoeffs, rvec, tvec);  // use corners[0] to access the set of corners that coressoponds to world tag (ids[0])
-        gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)), gtsam::Point3(tvec.val));
+        cv::Vec3d rvec_cTw, tvec_cTw;
+        cv::solvePnP(objPoints, corners[0], prototype::intrinsicsMatrix, distCoeffs, rvec_cTw, tvec_cTw);  // use corners[0] to access the set of corners that coressoponds to world tag (ids[0])
+        gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec_cTw.val)), gtsam::Point3(tvec_cTw.val));
         auto wTc = cTw.inverse(); // pose of camaer wrt world
 
-        cv::solvePnP(objPoints, corners[1], intrinsicsMatrix, distCoeffs,rvec, tvec);
-        gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)),gtsam::Point3(tvec.val));
+        cv::Vec3d rvec_cTt, tvec_cTt;
+        cv::solvePnP(objPoints, corners[1], intrinsicsMatrix, distCoeffs,rvec_cTt, tvec_cTt);
+        gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec_cTt.val)),gtsam::Point3(tvec_cTt.val));
         auto wTt = wTc.compose(cTt);
         observedTagsPoses.insert({ids[1], wTt});
 
@@ -109,29 +114,29 @@ namespace selective_data {
             points.push_back(pose.transformFrom(gtsam::Point3(-markerLength/2.f, -markerLength/2.f, 0)));
         }
 
-        std::vector<cv::Point3d> cvPts;
+
         std::vector<cv::Point2d> cvPts2d;
         for (const auto& point : points) {
             cvPts.push_back(cv::Point3d(point.x(), point.y(), point.z()));
         }
         // /*cv::Mat rotMat;
         // cv::Rodrigues(rvec, rotMat);*/
-        std::vector<cv::Point2d> imgPts;
-        cv::projectPoints(cvPts, rvec, tvec, intrinsicsMatrix, distCoeffs, imgPts);
+        /*std::vector<cv::Point2d> imgPts;
+        cv::projectPoints(cvPts, rvec_cTw, tvec_cTw, intrinsicsMatrix, distCoeffs, imgPts);
         rec.set_time_sequence("Frame", 0);
         std::vector<rerun::Position2D> rrPts;
         for (auto pt : imgPts) {
             rrPts.push_back(rerun::Position2D(pt.x, pt.y));
         }
         // = {rerun::Position3D(point.x(), point.y(), point.z())};
-        rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
+        rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));*/
         logCVImage(rec, image, 0);
 
         return points;
     }
 
     /* ************************************************************************* */
-    std::vector<gtsam::Pose3> createPoses() {
+    std::vector<gtsam::Pose3> createPoses(const rerun::RecordingStream& rec) {
         // Create the set of ground-truth poses
         // Default values give a circular trajectory, radius 30 at pi/4 intervals, always facing the circle center
         std::vector<gtsam::Pose3> poses;
@@ -145,22 +150,34 @@ namespace selective_data {
             cv::aruco::detectMarkers(image, cv::aruco::getPredefinedDictionary(cv::aruco::DICT_APRILTAG_36h11), corners,
                                      ids);
 
+            bool got_pose = false;
             for (int j = 0; j < ids.size(); ++j) {
-                if (observedTagsPoses.count(ids[j]) == 1) {
+                cv::Vec3d rvec, tvec;
+                cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
+                             rvec, tvec);
+                if (!got_pose) {
                     // tag was seen before and we know its pose wrt world
                     gtsam::Pose3 wTt = observedTagsPoses[ids[j]];
                     // pose of tag wrt wrld (transforms pts in tag crdnt to world)
                     std::cout << "using tag " << ids[j] << " to calc cam pose." << std::endl;
-                    cv::Vec3d rvec, tvec;
-                    cv::solvePnP(objPoints, corners[j], intrinsicsMatrix, distCoeffs,
-                                 rvec, tvec);
+
                     gtsam::Pose3 cTt(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec.val)),
                                      gtsam::Point3(tvec.val));
 
                     auto wTc = wTt.compose(cTt.inverse()); // pose of cam wrt world
                     poses.push_back(wTc);
-                    break;
+                    got_pose = true;
                 }
+                std::vector<cv::Point2d> imgPts;
+                cv::projectPoints(cvPts, rvec, tvec, intrinsicsMatrix, distCoeffs, imgPts);
+                rec.set_time_sequence("Frame", 0);
+                std::vector<rerun::Position2D> rrPts;
+                for (auto pt : imgPts) {
+                    rrPts.push_back(rerun::Position2D(pt.x, pt.y));
+                }
+                // = {rerun::Position3D(point.x(), point.y(), point.z())};
+                rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
+
             }
         }
 
@@ -206,7 +223,7 @@ namespace selective_data {
         vector<Point3> points = createPoints(rec);
 
         // Create the set of ground-truth poses
-        vector<Pose3> poses = createPoses();
+        vector<Pose3> poses = createPoses(rec);
 
         /*// Create a NonlinearISAM object which will relinearize and reorder the variables
         // every "relinearizeInterval" updates
@@ -244,25 +261,37 @@ namespace selective_data {
             for (size_t j = 0; j < points.size(); ++j) {
                 // Create ground truth measurement
                 // PinholeCamera<Cal3DS2> camera(poses[i]);
-                PinholeCamera<Cal3DS2> camera(poses[i].inverse(), *K);
+                PinholeCamera<Cal3DS2> camera(poses[i], *K);
                 Point2 measurement = camera.project(points[j]);
                 log2DPoint(rec, measurement, i, "world/camera/image/projpoint" + std::to_string(j), 1);
 
-                /*// cv::Mat rotMat = static_cast<Eigen::Matrix3d>(poses[i].rotation().matrix());
-                cv::Mat cvRotMat;
-                auto rotMat = poses[i].rotation().matrix();
+                /*std::vector<cv::Point2d> imgPts;
+                // cv::projectPoints(cvPts, rvec_cTw, tvec_cTw, intrinsicsMatrix, distCoeffs, imgPts);
+                cv::projectPoints(cvPts, rvec_cTw, tvec_cTw, intrinsicsMatrix, distCoeffs, imgPts);
+                rec.set_time_sequence("Frame", 0);
+                std::vector<rerun::Position2D> rrPts;
+                for (auto pt : imgPts) {
+                    rrPts.push_back(rerun::Position2D(pt.x, pt.y));
+                }
+                // = {rerun::Position3D(point.x(), point.y(), point.z())};
+                rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));*/
+
+                // cv::Mat rotMat = static_cast<Eigen::Matrix3d>(poses[i].rotation().matrix());
+                /*cv::Mat cvRotMat;
+                auto rotMat = poses[i].inverse().rotation().matrix();
                 for (int rowIndex = 0; rowIndex < 3; ++rowIndex) {
                     for (int colIndex = 0; colIndex < 3; ++colIndex) {
-                        cvRotMat.at<double>(rowIndex, colIndex) = rotMat.row(rowIndex).col(colIndex).value();
+                        // cvRotMat.at<double>(rowIndex, colIndex) = static_cast<double>(rotMat.row(rowIndex).col(colIndex).value());
+                        cvRotMat.at<double>(rowIndex, colIndex)  = rotMat(rowIndex, colIndex);
                     }
                 }
 
                 cv::Vec3d rvec;
                 cv::Rodrigues(cvRotMat, rvec);
 
-                auto gtsamTrans = poses[i].translation();
+                auto gtsamTrans = poses[i].inverse().translation();
 
-                cv::Vec3d tvec(gtsamTrans.x(),gtsamTrans.y(),gtsamTrans.z() );
+                cv::Vec3d tvec(static_cast<double>(gtsamTrans.x()),static_cast<double>(gtsamTrans.x()),static_cast<double>(gtsamTrans.x()));
                 // cv::eigen2cv(static_cast<Eigen::Matrix3d>(poses[i].translation().matrix()), tvec);
 
                 std::vector<cv::Point2d> imagePoints{};

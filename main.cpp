@@ -16,11 +16,12 @@ int main() {
     std::cout << "Hello, World!" << std::endl;
 
 
-    opencvProjTest test{};
+    /*opencvProjTest test{};
     test.TestOneImage();
+    */
 
 
-    // prototype::slam();
+    prototype::slam();
     // detectPoseVid();
     /*
      * Defaults:

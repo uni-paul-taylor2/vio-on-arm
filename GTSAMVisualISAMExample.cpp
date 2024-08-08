@@ -93,6 +93,7 @@ int main(int argc, char* argv[]) {
       // Not sure if to use all 4 corners of the april tag or just 1 and how that will affect the optimization.
       PinholeCamera<Cal3_S2> camera(poses[i], *K);
       Point2 measurement = camera.project(points[j]);
+      std::cout << measurement << endl;
       // TODO: If apriltag has not been seen yet, then add it to the initial estimate and initialize using solvePnP
       // Add measurement
       graph.emplace_shared<GenericProjectionFactor<Pose3, Point3, Cal3_S2>>(measurement, noise,

@@ -96,7 +96,7 @@ namespace selective_data {
         std::cout << "World Tag ID: " << worldTagID << std::endl;
 
         cv::Vec3d rvec_cTw, tvec_cTw;
-        cv::solvePnP(objPoints, corners[0], prototype::intrinsicsMatrix, distCoeffs, rvec_cTw, tvec_cTw);  // use corners[0] to access the set of corners that coressoponds to world tag (ids[0])
+        cv::solvePnP(objPoints, corners[0], intrinsicsMatrix, distCoeffs, rvec_cTw, tvec_cTw);  // use corners[0] to access the set of corners that coressoponds to world tag (ids[0])
         gtsam::Pose3 cTw(gtsam::Rot3::Rodrigues(gtsam::Vector3(rvec_cTw.val)), gtsam::Point3(tvec_cTw.val));
         auto wTc = cTw.inverse(); // pose of camaer wrt world
 
@@ -199,7 +199,7 @@ namespace selective_data {
         // Define the camera calibration parameters
         // Cal3_S2::shared_ptr K(new Cal3_S2(50.0, 50.0, 0.0, 50.0, 50.0));
 
-        const boost::shared_ptr<gtsam::Cal3DS2> K(
+        /*const boost::shared_ptr<gtsam::Cal3DS2> K(
         new gtsam::Cal3DS2(
            intrinsicsMatrix.at<double>(0, 0),
            intrinsicsMatrix.at<double>(1, 1),
@@ -209,7 +209,15 @@ namespace selective_data {
            distCoeffs.at<double>(0),
            distCoeffs.at<double>(1),
            distCoeffs.at<double>(2),
-           distCoeffs.at<double>(3)));
+           distCoeffs.at<double>(3)));*/
+        const boost::shared_ptr<gtsam::Cal3DS2> K(
+        new gtsam::Cal3DS2(
+           intrinsicsMatrix.at<double>(0, 0),
+           intrinsicsMatrix.at<double>(1, 1),
+           0.0,
+           intrinsicsMatrix.at<double>(0, 2),
+           intrinsicsMatrix.at<double>(1, 2),
+            0,0));
 
         cout << endl;
         cout << intrinsicsMatrix << endl;

@@ -5,14 +5,6 @@
 #include "opencvProjTest.h"
 
 void opencvProjTest::TestOneImage() {
-    /*float markerLength = 0.15;
-    cv::Mat objPoints(4, 1, CV_32FC3);
-    objPoints.ptr<cv::Vec3f>(0)[0] = cv::Vec3f(-markerLength/2.f, markerLength/2.f, 0);
-    objPoints.ptr<cv::Vec3f>(0)[1] = cv::Vec3f(markerLength/2.f, markerLength/2.f, 0);
-    objPoints.ptr<cv::Vec3f>(0)[2] = cv::Vec3f(markerLength/2.f, -markerLength/2.f, 0);
-    objPoints.ptr<cv::Vec3f>(0)[3] = cv::Vec3f(-markerLength/2.f, -markerLength/2.f, 0);
-    */
-
     // get image 35
     auto rec = startLogger();
     rec.set_time_sequence("Frame", 0);
@@ -69,13 +61,14 @@ void opencvProjTest::TestOneImage() {
 
 
     // project pts back using OpenCV
+    std::cout << "OpenCV 3D:\n" << cv3DPts;
     std::vector<cv::Point2d> imgPts;
     cv::projectPoints(cv3DPts, rvec_cTw, tvec_cTw, intrinsicsMatrix, distCoeffs, imgPts);
     rec.set_time_sequence("Frame", 0);
     std::vector<rerun::Position2D> rrPts;
     std::cout << "OpenCV projected:\n";
     for (auto pt : imgPts) {
-        std::cout << imgPts << std::endl;
+        std::cout << pt << std::endl;
         rrPts.push_back(rerun::Position2D(pt.x, pt.y));
     }
     rec.log("world/camera/image/opencvProjPts", rerun::Points2D(rrPts).with_colors(rerun::Color(255,255,255)));
@@ -87,10 +80,13 @@ void opencvProjTest::TestOneImage() {
           0.0,
           intrinsicsMatrix.at<double>(0, 2),
           intrinsicsMatrix.at<double>(1, 2),
+          //0,0
           distCoeffs.at<double>(0),
           distCoeffs.at<double>(1),
           distCoeffs.at<double>(2),
-          distCoeffs.at<double>(3)));
+          distCoeffs.at<double>(3)
+          )
+          );
 
     K->print("K");
 
@@ -98,10 +94,11 @@ void opencvProjTest::TestOneImage() {
     for (size_t j = 0; j < points.size(); ++j) {
         gtsam::PinholeCamera<gtsam::Cal3DS2> camera(wTc, *K);
         gtsam::Point2 measurement = camera.project(points[j]);
-        // std::cout << points[j];
-        std::cout << measurement << std::endl;
+        std::cout << "GTSAM 3D:\n" << points[j] << std::endl;
+        std::cout << "Projected:\n" << measurement << std::endl << std::endl;
         log2DPoint(rec, measurement, 0, "world/camera/image/projpoint" + std::to_string(j), 3);
     }
+
 
 
 }

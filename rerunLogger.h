@@ -22,8 +22,8 @@
 #include <gtsam/slam/ProjectionFactor.h>
 
 
-inline rerun::RecordingStream startLogger() {
-    auto rec = rerun::RecordingStream("Logger");
+inline rerun::RecordingStream startLogger(const std::string& stream="Logger") {
+    auto rec = rerun::RecordingStream(stream);
     rec.spawn().exit_on_failure();
     rec.set_time_sequence("Frame", 0);
     return rec;

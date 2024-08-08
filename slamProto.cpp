@@ -19,13 +19,16 @@
 
 #include <vector>
 
+#include "rerunLogger.h"
+
 namespace prototype {
     struct Tag {
         gtsam::Pose3 pose;
         int count{};
     };
 
-    auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/");
+    // auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/");
+    auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/original order/vid_APRILTAG_36h11_720p/");
 
     float markerLength = 0.15;
 
@@ -48,7 +51,7 @@ namespace prototype {
             intrinsicsMatrix.at<double>(1, 2), distCoeffs.at<double>(0),
             distCoeffs.at<double>(1), distCoeffs.at<double>(2),
             distCoeffs.at<double>(3)));*/
-    const boost::shared_ptr<gtsam::Cal3DS2> K(
+    /*const boost::shared_ptr<gtsam::Cal3DS2> K(
         new gtsam::Cal3DS2(
            intrinsicsMatrix.at<double>(0, 0),
            intrinsicsMatrix.at<double>(1, 1),
@@ -58,7 +61,15 @@ namespace prototype {
            distCoeffs.at<double>(0),
            distCoeffs.at<double>(1),
            distCoeffs.at<double>(2),
-           distCoeffs.at<double>(3)));
+           distCoeffs.at<double>(3)));*/
+    const boost::shared_ptr<gtsam::Cal3DS2> K(
+        new gtsam::Cal3DS2(
+           intrinsicsMatrix.at<double>(0, 0),
+           intrinsicsMatrix.at<double>(1, 1),
+           0.0,
+           intrinsicsMatrix.at<double>(0, 2),
+           intrinsicsMatrix.at<double>(1, 2),
+           0,0));
 
     // Define the camera observation noise model (will leave the same for now).
     // TODO: Also try with gaussian noise.
@@ -128,10 +139,10 @@ namespace prototype {
 
         // for (size_t frame_num = 35; frame_num <= numImages; ++frame_num) {
         int poseNum = 0;
-        // for (size_t frame_num = 0; frame_num <= numImages; frame_num += 10) {
+        for (size_t frame_num = 0; frame_num <= numImages; frame_num += 1) {
         // for (size_t frame_num = 18; frame_num <= numImages; frame_num++) {
-        std::vector<int> frames = {35};//, 39};//, 65, 78, 85, 128, 142};
-        for (int frame_num : frames) {
+        std::vector<int> frames = {35, 39, 65, 78, 85, 128, 142};
+        // for (int frame_num : frames) {
             // looping through frames
             std::cout << "\nFrame " << frame_num <<
                 "=============================================================================\n";
@@ -186,7 +197,7 @@ namespace prototype {
             // less than 2 tags] todo: and that at least one of the tags observed was
             // seen before if (!ids.empty()) {
             // if (ids.size() >= 2) {
-            if (ids.size() >= 0) {
+            if (ids.size() > 2) {
                 // If this is the first iteration, add a prior on the first pose to set
                 // the coordinate frame and a prior on the first landmark to set the scale
                 // (and denote the first landmark as world) Also, as iSAM solves
@@ -232,7 +243,7 @@ namespace prototype {
                     // roll,pitch,yaw
                     auto poseNoise = gtsam::noiseModel::Diagonal::Sigmas(
                         (gtsam::Vector(6) << gtsam::Vector3::Constant(0.1),
-                            gtsam::Vector3::Constant(0.3))
+                            gtsam::Vector3::Constant(0.1))
                         .finished());
                     graph.addPrior(
                         gtsam::Symbol('x', poseNum), wTc,
@@ -242,7 +253,7 @@ namespace prototype {
                     std::cout << "Added PRIOR to temp GRAPH to first camera pose: x" << frame_num
                         << std::endl;
                     // Add a prior on landmark l0
-                    auto pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 0.1);
+                    auto pointNoise = gtsam::noiseModel::Isotropic::Sigma(3, 0.01);
                     graph.addPrior(gtsam::Symbol('l', ids[0]), gtsam::Point3(0, 0, 0),
                                    pointNoise);
 
@@ -422,13 +433,13 @@ namespace prototype {
                 // Update iSAM with the new factors
                 bool update = false;
                 for (int id : ids) {
-                    if (observedTags[id].count < 5) {
-                        update = false;
+                    if (observedTags[id].count < 2) {
+                        update = true;
                     }
                 }
 
 
-                if(update) {
+                if(false) {
                     graph.print("***********************************GRAPH***********************************");
                     std::cout << "Updating iSAM...\n";
                     isam.print();
@@ -457,12 +468,21 @@ namespace prototype {
         }
 
         // batch optimization using Levenberg-Marquardt
-        std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------";
+        std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------\n\n";
         gtsam::LevenbergMarquardtParams param;
         param.verbosityLM = gtsam::LevenbergMarquardtParams::SUMMARY;
         param.lambdaUpperBound = 1e10;
         auto result = gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, param).optimize();
         result.print("Result");
+
+        std::cout << "-----------------------------------------------------------------------------------------------------------------------------------------------\n\n";
+
+        for (auto &[key, value] : observedTags) {
+            std::cout << result.at<gtsam::Point3>(gtsam::Symbol('l', key)) << std::endl<<std::endl;
+
+            log3DPoint(rec, result.at<gtsam::Point3>(gtsam::Symbol('l', key)), 173, "world/l" + std::to_string(key), 3);
+        }
+
 
 
         // auto pose = result.at<gtsam::Pose3>(0);

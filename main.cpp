@@ -12,6 +12,8 @@
 
 #include "opencvProjTest.h"
 
+#include "slamProto2.cpp"
+
 int main() {
     std::cout << "Hello, World!" << std::endl;
 
@@ -21,7 +23,8 @@ int main() {
     */
 
 
-    prototype::slam();
+    prototype2::slam();
+    // prototype::slam();
     // detectPoseVid();
     /*
      * Defaults:

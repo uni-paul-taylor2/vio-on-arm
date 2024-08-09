@@ -30,7 +30,9 @@ namespace prototype2 {
     };
 
     auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap/");
-    int numImages = 629;
+    int numImages = 425;//629; //285 //425 // 462
+    /*auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap2/");
+    int numImages = 381;*/
 
     float markerLength = 0.15;
 
@@ -109,7 +111,8 @@ namespace prototype2 {
         int poseNum = 0;
 
         // looping through frames
-        for (size_t frame_num = 0; frame_num <= numImages; frame_num += 30) { //30fps
+        for (size_t frame_num = 0; frame_num <= numImages; frame_num += 1) {
+        // for (size_t frame_num = 0; frame_num <= numImages; frame_num += 30) { //30fps
             rec.set_time_sequence("Frame", static_cast<int64_t>(frame_num));
 
             cv::Mat image = getCVImage(static_cast<int>(frame_num));
@@ -311,7 +314,7 @@ namespace prototype2 {
         for (auto &[key, value] : observedTags) {
             std::cout << result.at<gtsam::Point3>(gtsam::Symbol('l', key)) << std::endl<<std::endl;
 
-            log3DPoint(rec, result.at<gtsam::Point3>(gtsam::Symbol('l', key)), 173, "world/l" + std::to_string(key), 3);
+            log3DPoint(rec, result.at<gtsam::Point3>(gtsam::Symbol('l', key)), 173, "world/l" + std::to_string(key), 5);
         }
     }
 } // namespace prototype

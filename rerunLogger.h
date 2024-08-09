@@ -80,6 +80,7 @@ inline void log3DPoint(const rerun::RecordingStream& rec, const gtsam::Point3& p
 
     rec.set_time_sequence("Frame", frameNum);
     std::vector<rerun::Position3D> points = {rerun::Position3D(point.x(), point.y(), point.z())};
+    // rec.log(entity, rerun::Points3D(points).with_colors(c).with_radii(2.65));
     rec.log(entity, rerun::Points3D(points).with_colors(c));
 }
 

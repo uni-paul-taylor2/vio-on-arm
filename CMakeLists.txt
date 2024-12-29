@@ -8,14 +8,14 @@ find_package(Boost 1.65.0 REQUIRED system filesystem serialization REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 # Adding path to Eigen to includes (for GTSAM)
-include_directories(/usr/local/include/gtsam/3rdparty/)
-include_directories(/usr/local/include/gtsam/3rdparty/Eigen)
+# include_directories(/usr/local/include/gtsam/3rdparty/)
+# include_directories(/usr/local/include/gtsam/3rdparty/Eigen)
 
 find_package(GTSAM REQUIRED)
-set(OpenCV_DIR /home/zakareeyah/opencv/lib/cmake/opencv4)
+# set(OpenCV_DIR /home/zakareeyah/opencv/lib/cmake/opencv4)
 find_package(OpenCV REQUIRED)
 
-include_directories(${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${GTSAM_INCLUDE_DIR})
+include_directories(${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${GTSAM_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR})
 
 add_executable(Dev main.cpp
         rerunLogger.h

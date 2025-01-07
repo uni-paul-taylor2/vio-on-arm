@@ -1,29 +1,23 @@
 #include <iostream>
-
+#include <unistd.h>
 #include "markerDetection.cpp"
 #include "poseDetection.cpp"
-#include "poseDetectionRerunLogging.cpp"
-#include "LogPoseAprilTagsVid.cpp"
-
-#include "VSLAM.h"
-#include "slamProto.cpp"
-#include "GTSAMviSAMExample2.cpp"
-#include "selectiveDataTest.cpp"
-
-#include "opencvProjTest.h"
-
 #include "slamProto2.cpp"
 
-int main() {
+int main(int argc, char **argv) {
     std::cout << "Hello, World!" << std::endl;
-
+    char cwd[4096];
+    if( !getcwd(cwd,sizeof(cwd)) ){
+        perror("getcwd() did not work");
+        exit(1);
+    }
 
     /*opencvProjTest test{};
     test.TestOneImage();
     */
 
 
-    prototype2::slam();
+    prototype2::slam(std::string(cwd));
     // prototype::slam();
     // detectPoseVid();
     /*

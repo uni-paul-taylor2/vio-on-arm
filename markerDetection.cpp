@@ -8,7 +8,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/ximgproc.hpp>
 #include <opencv2/calib3d.hpp>
-
+#include <opencv2/imgproc.hpp>
 #include <opencv2/aruco.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -17,9 +17,9 @@
 //utility function to get path: via cmd line or using relative paths based on assumptions.
 //func should take in image/path to image
 
-void detectMarkers() {
-    std::string imgPath = "/home/zakareeyah/CLionProjects/Dev/media/OAK_DICT_4x4_50_1080p.jpeg";
-    std::string outPath = "/home/zakareeyah/CLionProjects/Dev/media/out_OAK_DICT_4x4_50_1080p_markersDectected.png";
+
+void detectMarkers(std::string imgPath) {
+    std::string outPath = imgPath+"_markersDectected.png";
     auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_50);
 
 

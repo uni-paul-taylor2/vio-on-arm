@@ -4,6 +4,7 @@
 #include <opencv2/calib3d.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <gtsam/geometry/Cal3DS2.h>
 #include <gtsam/geometry/Point2.h>
@@ -29,7 +30,7 @@ namespace prototype2 {
         int count{};
     };
 
-    auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap/");
+    std::string dirPath;
     int numImages = 425;//629; //285 //425 // 462
     /*auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap2/");
     int numImages = 381;*/
@@ -86,7 +87,8 @@ namespace prototype2 {
     }
 
 
-    void slam() {
+    void slam(std::string path) {
+        dirPath=path;
         initObjPoints(objPoints);
 
         // Create a Factor Graph and Values to (temp) hold the new data

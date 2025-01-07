@@ -1,3 +1,0 @@
-#include "VSLAM.h"
-
-VSLAM::

@@ -21,6 +21,11 @@
 
 #include "rerunLogger.h"
 
+#define STRING(x) #x
+#define XSTRING(x) STRING(x)
+
+
+
 namespace prototype {
     struct Tag {
         gtsam::Pose3 pose;
@@ -28,9 +33,10 @@ namespace prototype {
     };
 
     // auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/vid_APRILTAG_36h11_720p/");
-    auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/original order/vid_APRILTAG_36h11_720p/");
+    // auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/original order/vid_APRILTAG_36h11_720p/");
+    std::string dirPath = std::string(XSTRING(SOURCE_ROOT)).append("/original order/vid_APRILTAG_36h11_720p/");
 
-    float markerLength = 0.15;
+    float markerLength = 0.111;
 
     // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
     cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) <<
@@ -439,7 +445,7 @@ namespace prototype {
                 }
 
 
-                if(false) {
+                if(update) {
                     graph.print("***********************************GRAPH***********************************");
                     std::cout << "Updating iSAM...\n";
                     isam.print();

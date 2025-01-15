@@ -21,6 +21,10 @@
 
 #include "rerunLogger.h"
 
+#define STRING(x) #x
+#define XSTRING(x) STRING(x)
+
+
 #define landmark(tID, corner) gtsam::Symbol("t" + std::to_string(tID) + "c", corner)
 
 namespace prototype2 {
@@ -29,12 +33,15 @@ namespace prototype2 {
         int count{};
     };
 
-    auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap/");
+    // auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap/");
+    std::string dirPath = std::string(XSTRING(SOURCE_ROOT)).append("/roomMap/");
+
     int numImages = 425;//629; //285 //425 // 462
     /*auto dirPath = std::string("/home/zakareeyah/CLionProjects/Dev/roomMap2/");
     int numImages = 381;*/
 
-    float markerLength = 0.15;
+    // float markerLength = 0.15;
+    float markerLength = 0.111;
 
     // may have to read in as float (check if OpenCV needs it as floats); consider reading in as vectors instead of Mat; https://docs.opencv.org/2.4/modules/core/doc/basic_structures.html#mat-mat
     cv::Mat intrinsicsMatrix = (cv::Mat_<double>(3, 3) <<
@@ -87,6 +94,7 @@ namespace prototype2 {
 
 
     void slam() {
+        std::cout << std::endl << "Slam started..." << std::endl;
         initObjPoints(objPoints);
 
         // Create a Factor Graph and Values to (temp) hold the new data

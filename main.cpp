@@ -6,13 +6,12 @@
 #include "LogPoseAprilTagsVid.cpp"
 
 #include "VSLAM.h"
-#include "slamProto.cpp"
 #include "GTSAMviSAMExample2.cpp"
 #include "selectiveDataTest.cpp"
 
 #include "opencvProjTest.h"
 
-#include "slamProto2.cpp"
+
 
 int main() {
     std::cout << "Hello, World!" << std::endl;
@@ -23,7 +22,7 @@ int main() {
     */
 
 
-    prototype2::slam();
+    // prototype2::slam();
     // prototype::slam();
     // detectPoseVid();
     /*

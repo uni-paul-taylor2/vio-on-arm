@@ -13,10 +13,10 @@ find_package(GTSAM REQUIRED)
 find_package(Boost 1.65.0 REQUIRED system filesystem serialization REQUIRED)
 
 # Include Directories
-include_directories(${Boost_INCLUDE_DIR}
-                    ${EIGEN3_INCLUDE_DIR}
+include_directories(${Boost_INCLUDE_DIRS}
+                    ${EIGEN3_INCLUDE_DIRS}
                     ${OpenCV_INCLUDE_DIRS}
-                    ${GTSAM_INCLUDE_DIR})
+                    ${GTSAM_INCLUDE_DIRS})
 
 add_executable(Dev main.cpp
         rerunLogger.h
@@ -33,6 +33,6 @@ FetchContent_Declare(rerun_sdk URL
 FetchContent_MakeAvailable(rerun_sdk)
 
 
-target_link_libraries(Dev ${OpenCV_LIBS} rerun_sdk ${Boost_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
+target_link_libraries(Dev ${OpenCV_LIBRARIES} rerun_sdk ${Boost_LIBRARIES} ${GTSAM_LIBRARIES})
 
-target_link_libraries(gtsamExample ${Boost_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
+target_link_libraries(gtsamExample ${Boost_LIBRARIES} ${GTSAM_LIBRARIES})

@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.28)
 project(Dev)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
-add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
+#set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
+#add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
 
 # Find Packages
 find_package(kimera_vio REQUIRED)
@@ -33,6 +33,6 @@ FetchContent_Declare(rerun_sdk URL
 FetchContent_MakeAvailable(rerun_sdk)
 
 
-target_link_libraries(Dev ${OpenCV_LIBRARIES} rerun_sdk ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
+target_link_libraries(Dev ${OpenCV_LIBS} rerun_sdk ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis gtsam gtsam_unstable)
 
-target_link_libraries(gtsamExample ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
+target_link_libraries(gtsamExample ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis gtsam gtsam_unstable)

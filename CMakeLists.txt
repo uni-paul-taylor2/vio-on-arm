@@ -33,6 +33,6 @@ FetchContent_Declare(rerun_sdk URL
 FetchContent_MakeAvailable(rerun_sdk)
 
 
-target_link_libraries(Dev ${OpenCV_LIBRARIES} rerun_sdk ${Boost_LIBRARIES} ${GTSAM_LIBRARIES})
+target_link_libraries(Dev ${OpenCV_LIBRARIES} rerun_sdk ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis-gtsam gtsam gtsam_unstable)
 
-target_link_libraries(gtsamExample ${Boost_LIBRARIES} ${GTSAM_LIBRARIES})
+target_link_libraries(gtsamExample ${Boost_LIBRARIES} ${GTSAM_LIBRARIES} metis-gtsam gtsam gtsam_unstable)

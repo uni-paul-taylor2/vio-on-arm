@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 project(Dev)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
 
 add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
 
@@ -10,8 +11,8 @@ find_package(Boost 1.65.0 REQUIRED system filesystem serialization REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 # Adding path to Eigen to includes (for GTSAM)
-#include_directories(/usr/local/include/gtsam/3rdparty/)
-#include_directories(/usr/local/include/gtsam/3rdparty/Eigen)
+include_directories(/usr/local/include/gtsam/3rdparty/)
+include_directories(/usr/local/include/gtsam/3rdparty/Eigen)
 
 find_package(GTSAM REQUIRED)
 #set(OpenCV_DIR /home/<username>/opencv/lib/cmake/opencv4) # leave commented out if OpenCV is installed

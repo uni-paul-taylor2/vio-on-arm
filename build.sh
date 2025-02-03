@@ -1,3 +1,4 @@
+START_DIR=$(pwd)
 sudo apt-get update
 sudo apt upgrade
 sudo apt install -y libboost-all-dev build-essential libtbb-dev libgflags-dev libgoogle-glog-dev libavcodec-dev libavformat-dev libswscale-dev \
@@ -21,3 +22,11 @@ if [ ! -d gtsam ]; then
   sudo make -j $(nproc) install
   cd ../..
 fi
+
+cd $START_DIR
+mkdir -p build
+cd build
+cmake ..
+sudo make -j $(nproc)
+cd ..
+#now to run ./build/exported_lib.so or what not (TODO)

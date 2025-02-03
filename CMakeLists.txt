@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.28)
 project(Dev)
 
 set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
-#add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
+set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
+add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
+# both of these lines above might be useless, but they don't seem to break anything ;-;
 
 # Find Packages
 find_package(kimera_vio REQUIRED)

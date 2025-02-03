@@ -3,22 +3,20 @@ project(Dev)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_LIBRARIES "-lstdc++fs") #https://github.com/borglab/gtsam/issues/1495
-
 add_compile_definitions("SOURCE_ROOT=${CMAKE_SOURCE_DIR}")
 
-# Linking boost (for GTSAM)
-find_package(Boost 1.65.0 REQUIRED system filesystem serialization REQUIRED)
-include_directories(${Boost_INCLUDE_DIR})
-
-# Adding path to Eigen to includes (for GTSAM)
-include_directories(/usr/local/include/gtsam/3rdparty/)
-include_directories(/usr/local/include/gtsam/3rdparty/Eigen)
-
-find_package(GTSAM REQUIRED)
-#set(OpenCV_DIR /home/<username>/opencv/lib/cmake/opencv4) # leave commented out if OpenCV is installed
+# Find Packages
+find_package(kimera_vio REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(GTSAM REQUIRED)
+find_package(Boost 1.65.0 REQUIRED system filesystem serialization REQUIRED)
 
-include_directories(${OpenCV_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${GTSAM_INCLUDE_DIR})
+# Include Directories
+include_directories(${Boost_INCLUDE_DIR}
+                    ${EIGEN3_INCLUDE_DIR}
+                    ${OpenCV_INCLUDE_DIRS}
+                    ${GTSAM_INCLUDE_DIR})
 
 add_executable(Dev main.cpp
         rerunLogger.h
